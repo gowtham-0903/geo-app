@@ -1,17 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Masters from './pages/Masters';
-
-// Placeholders — replaced in coming modules
-function Dashboard()   { return <div className="py-4 text-gray-400 text-sm">Dashboard — Module 5</div>; }
-function Production()  { return <div className="py-4 text-gray-400 text-sm">Production — Module 4</div>; }
-function Purchase()    { return <div className="py-4 text-gray-400 text-sm">Purchase — Module 4</div>; }
-function Sales()       { return <div className="py-4 text-gray-400 text-sm">Sales — Module 5</div>; }
-function Outstanding() { return <div className="py-4 text-gray-400 text-sm">Outstanding — Module 5</div>; }
-function Costing()     { return <div className="py-4 text-gray-400 text-sm">Costing — Module 4</div>; }
-function Expenses()    { return <div className="py-4 text-gray-400 text-sm">Expenses — Module 5</div>; }
+import Login       from './pages/Login';
+import Dashboard   from './pages/Dashboard';
+import Production  from './pages/Production';
+import Purchase    from './pages/Purchase';
+import Sales       from './pages/Sales';
+import Outstanding from './pages/Outstanding';
+import Costing     from './pages/Costing';
+import Expenses    from './pages/Expenses';
+import Masters     from './pages/Masters';
 
 export default function App() {
   return (
@@ -27,7 +25,7 @@ export default function App() {
           <Route path="/costing"     element={<ProtectedRoute adminOnly><Costing /></ProtectedRoute>} />
           <Route path="/expenses"    element={<ProtectedRoute adminOnly><Expenses /></ProtectedRoute>} />
           <Route path="/masters"     element={<ProtectedRoute adminOnly><Masters /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*"            element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
