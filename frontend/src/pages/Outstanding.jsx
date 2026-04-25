@@ -143,7 +143,7 @@ export default function Outstanding() {
 
       {/* Ledger Modal */}
       <Modal isOpen={modal} onClose={() => setModal(false)} title={`${selected?.name} — Ledger`}>
-        <div className="space-y-2 max-h-80 overflow-y-auto">
+        <div className="space-y-2 max-h-80 overflow-y-auto pb-20 lg:pb-0">
           {ledger.length === 0 && (
             <p className="text-center text-gray-400 text-sm py-4">No transactions found</p>
           )}

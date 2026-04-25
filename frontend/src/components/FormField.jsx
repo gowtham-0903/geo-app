@@ -10,20 +10,20 @@ export default function FormField({ label, error, children }) {
   );
 }
 
-export function Input({ ...props }) {
+export function Input({ className = '', ...props }) {
   return (
     <input
       {...props}
-      className="w-full bg-app-bg border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy-light transition"
+      className={`w-full bg-app-bg border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy-light transition ${className}`}
     />
   );
 }
 
-export function Select({ children, ...props }) {
+export function Select({ children, className = '', ...props }) {
   return (
     <select
       {...props}
-      className="w-full bg-app-bg border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light transition appearance-none"
+      className={`w-full bg-app-bg border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light transition appearance-none ${className}`}
     >
       {children}
     </select>

@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import geoLogo from '../../logo/GEO LOGO.png';
 
 const adminNav = [
   { to: '/dashboard',   icon: '📊', label: 'Dashboard'   },
@@ -24,14 +25,12 @@ export default function SidebarNav() {
   return (
     <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-white border-r border-gray-100 fixed left-0 top-0">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-8 border-b border-gray-100">
-        <div className="w-10 h-10 bg-navy rounded-2xl flex items-center justify-center">
-          <span className="text-white font-bold text-lg">G</span>
-        </div>
-        <div>
-          <p className="font-bold text-black text-sm leading-tight">GEO Pet Bottles</p>
-          <p className="text-gray-400 text-xs">Manufacturing</p>
-        </div>
+      <div className="px-6 py-6 border-b border-gray-100">
+        <img
+          src={geoLogo}
+          alt="Geo Packs"
+          className="h-10 w-auto"
+        />
       </div>
 
       {/* Nav items */}

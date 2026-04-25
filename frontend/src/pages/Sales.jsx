@@ -121,8 +121,8 @@ export default function Sales() {
     <Layout title="Sales" subtitle="Supervisor">
 
       {/* Month filter + Add */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1">
+      <div className="flex items-center gap-2 mb-6 min-w-0">
+        <div className="flex-1 min-w-0">
           <input
             type="month"
             value={filterMonth}
@@ -130,11 +130,23 @@ export default function Sales() {
             className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light"
           />
         </div>
+        <div className="hidden lg:flex">
+          <button
+            onClick={openAdd}
+            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          >
+            + Invoice
+          </button>
+        </div>
+      </div>
+
+      <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
         <button
           onClick={openAdd}
-          className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg"
+          aria-label="Add sales invoice"
         >
-          + Invoice
+          +
         </button>
       </div>
 
@@ -238,7 +250,7 @@ export default function Sales() {
 
         <div className="space-y-3 mb-4">
           {items.map((item, i) => (
-            <div key={i} className="bg-app-bg rounded-2xl p-3">
+            <div key={i} className="bg-app-bg rounded-2xl p-2.5 text-xs">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-gray-500">Item {i + 1}</p>
                 {items.length > 1 && (
@@ -247,7 +259,8 @@ export default function Sales() {
                 )}
               </div>
               <Select value={item.bottle_type_id}
-                onChange={e => setItem(i, 'bottle_type_id', e.target.value)}>
+                onChange={e => setItem(i, 'bottle_type_id', e.target.value)}
+                className="text-xs px-3 py-2.5 rounded-xl">
                 <option value="">Select bottle type...</option>
                 {bottleTypes.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
@@ -258,17 +271,19 @@ export default function Sales() {
                   <p className="text-xs text-gray-400 mb-1">Qty</p>
                   <Input type="number" value={item.quantity}
                     onChange={e => setItem(i, 'quantity', e.target.value)}
-                    placeholder="1000" />
+                    placeholder="1000"
+                    className="text-xs px-3 py-2.5 rounded-xl" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Rate ₹</p>
                   <Input type="number" step="0.01" value={item.rate}
                     onChange={e => setItem(i, 'rate', e.target.value)}
-                    placeholder="3.50" />
+                    placeholder="3.50"
+                    className="text-xs px-3 py-2.5 rounded-xl" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Amount</p>
-                  <div className="bg-white rounded-2xl px-3 py-3 text-sm font-bold text-navy">
+                  <div className="bg-white rounded-xl px-2.5 py-2.5 text-xs font-bold text-navy">
                     ₹{fmt(item.amount || 0)}
                   </div>
                 </div>

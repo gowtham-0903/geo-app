@@ -29,10 +29,12 @@ export default function Costing() {
       // live preview
       if (selected) {
         const rawR  = parseFloat(next.raw_material_rate) || 0;
-        const wPct  = parseFloat(next.wastage_pct) || 2;
+        const parsedWPct = parseFloat(next.wastage_pct);
+        const wPct  = Number.isNaN(parsedWPct) ? 2 : parsedWPct;
         const blowC = parseFloat(next.blowing_cost) || 0;
         const capC  = parseFloat(next.cap_cost) || 0;
-        const gPct  = parseFloat(next.gst_pct) || 18;
+        const parsedGPct = parseFloat(next.gst_pct);
+        const gPct  = Number.isNaN(parsedGPct) ? 18 : parsedGPct;
         const wt    = parseFloat(selected.weight_grams) / 1000;
         const finalR = rawR * (1 + wPct / 100);
         const matC   = finalR * wt;
@@ -49,11 +51,11 @@ export default function Costing() {
   function openEdit(item) {
     setSelected(item);
     setForm({
-      raw_material_rate: item.raw_material_rate || '',
-      wastage_pct:       item.wastage_pct || '2',
-      blowing_cost:      item.blowing_cost || '',
-      cap_cost:          item.cap_cost || '0',
-      gst_pct:           item.gst_pct || '18',
+      raw_material_rate: item.raw_material_rate ?? '',
+      wastage_pct:       item.wastage_pct ?? '2',
+      blowing_cost:      item.blowing_cost ?? '',
+      cap_cost:          item.cap_cost ?? '0',
+      gst_pct:           item.gst_pct ?? '18',
       effective_from:    new Date().toISOString().split('T')[0],
     });
     setPreview(null);
@@ -78,7 +80,9 @@ export default function Costing() {
       </p>
 
       <div className="space-y-3">
-        {items.map(item => (
+        {items.map(item => {
+          const hasCapCost = Number(item.cap_cost || 0) > 0;
+          return (
           <div key={item.id} className="bg-white rounded-3xl p-4">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -94,7 +98,7 @@ export default function Costing() {
             </div>
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-app-bg rounded-2xl p-2 text-center">
-                <p className="text-xs font-bold text-black">₹{fmt2(item.raw_material_rate)}</p>
+                <p className="text-xs font-bold text-black">₹{fmt4(item.raw_material_rate)}</p>
                 <p className="text-xs text-gray-400">Raw/kg</p>
               </div>
               <div className="bg-app-bg rounded-2xl p-2 text-center">
@@ -106,12 +110,22 @@ export default function Costing() {
                 <p className="text-xs text-gray-400">+GST</p>
               </div>
               <div className="bg-navy rounded-2xl p-2 text-center">
-                <p className="text-xs font-bold text-white">₹{fmt4(item.total_cost_with_cap)}</p>
-                <p className="text-xs text-navy-light">+Cap</p>
+                {hasCapCost ? (
+                  <>
+                    <p className="text-xs font-bold text-white">₹{fmt4(item.total_cost_with_cap)}</p>
+                    <p className="text-xs text-navy-light">+Cap</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-white">No Cap</p>
+                    <p className="text-xs text-navy-light">No cap cost included</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {items.length === 0 && (
@@ -176,8 +190,12 @@ export default function Costing() {
               <span className="text-white font-semibold">₹{fmt4(preview.gst)}</span>
             </div>
             <div className="flex justify-between text-sm border-t border-navy-light/30 pt-2">
-              <span className="text-navy-light font-bold">Total with Cap</span>
-              <span className="text-white font-bold text-base">₹{fmt4(preview.withCap)}</span>
+              <span className="text-navy-light font-bold">
+                {Number(form.cap_cost || 0) > 0 ? 'Total with Cap' : 'No cap cost included'}
+              </span>
+              <span className="text-white font-bold text-base">
+                {Number(form.cap_cost || 0) > 0 ? `₹${fmt4(preview.withCap)}` : '-'}
+              </span>
             </div>
           </div>
         )}

@@ -58,15 +58,27 @@ export default function Expenses() {
 
   return (
     <Layout title="Expenses" subtitle="Admin">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1">
+      <div className="flex items-center gap-2 mb-6 min-w-0">
+        <div className="flex-1 min-w-0">
           <input type="month" value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
             className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light" />
         </div>
-        <button onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], category_id: '', amount: '', description: '' }); setModal(true); }}
-          className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl whitespace-nowrap">
-          + Add
+        <div className="hidden lg:flex">
+          <button onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], category_id: '', amount: '', description: '' }); setModal(true); }}
+            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl whitespace-nowrap">
+            + Add
+          </button>
+        </div>
+      </div>
+
+      <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
+        <button
+          onClick={() => { setForm({ date: new Date().toISOString().split('T')[0], category_id: '', amount: '', description: '' }); setModal(true); }}
+          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg"
+          aria-label="Add expense"
+        >
+          +
         </button>
       </div>
 

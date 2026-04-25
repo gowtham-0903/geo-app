@@ -67,8 +67,8 @@ export default function Purchase() {
     <Layout title="Purchase" subtitle="Supervisor">
 
       {/* Month filter + Add */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1">
+      <div className="flex items-center gap-2 mb-6 min-w-0">
+        <div className="flex-1 min-w-0">
           <input
             type="month"
             value={filterMonth}
@@ -76,11 +76,23 @@ export default function Purchase() {
             className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light"
           />
         </div>
+        <div className="hidden lg:flex">
+          <button
+            onClick={openAdd}
+            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+
+      <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
         <button
           onClick={openAdd}
-          className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg"
+          aria-label="Add purchase"
         >
-          + Add
+          +
         </button>
       </div>
 
