@@ -7,9 +7,22 @@ const Costing = {
       SELECT bc.*, bt.name AS bottle_name, bt.weight_grams, bt.category
       FROM bottle_costing bc
       JOIN bottle_types bt ON bc.bottle_type_id = bt.id
-      WHERE bc.effective_from = (
-        SELECT MAX(bc2.effective_from) FROM bottle_costing bc2
-        WHERE bc2.bottle_type_id = bc.bottle_type_id
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM bottle_costing newer
+        WHERE newer.bottle_type_id = bc.bottle_type_id
+          AND (
+            newer.effective_from > bc.effective_from
+            OR (
+              newer.effective_from = bc.effective_from
+              AND COALESCE(newer.created_at, '1970-01-01') > COALESCE(bc.created_at, '1970-01-01')
+            )
+            OR (
+              newer.effective_from = bc.effective_from
+              AND COALESCE(newer.created_at, '1970-01-01') = COALESCE(bc.created_at, '1970-01-01')
+              AND newer.id > bc.id
+            )
+          )
       )
       ORDER BY bt.category, bt.size_ml
     `);
@@ -22,7 +35,7 @@ const Costing = {
        FROM bottle_costing bc
        JOIN bottle_types bt ON bc.bottle_type_id = bt.id
        WHERE bc.bottle_type_id=?
-       ORDER BY bc.effective_from DESC`, [bottleTypeId]
+       ORDER BY bc.effective_from DESC, bc.created_at DESC, bc.id DESC`, [bottleTypeId]
     );
     return rows;
   },
@@ -34,9 +47,13 @@ const Costing = {
       blowing_cost, cap_cost, gst_pct, effective_from
     } = data;
 
-    const wPct   = parseFloat(wastage_pct)      || 2;
-    const gPct   = parseFloat(gst_pct)          || 18;
-    const capC   = parseFloat(cap_cost)         || 0;
+    const parsedWPct = parseFloat(wastage_pct);
+    const parsedGPct = parseFloat(gst_pct);
+    const parsedCapC = parseFloat(cap_cost);
+
+    const wPct   = Number.isNaN(parsedWPct) ? 2 : parsedWPct;
+    const gPct   = Number.isNaN(parsedGPct) ? 18 : parsedGPct;
+    const capC   = Number.isNaN(parsedCapC) ? 0 : parsedCapC;
     const rawR   = parseFloat(raw_material_rate);
     const blowC  = parseFloat(blowing_cost);
 
@@ -63,7 +80,7 @@ const Costing = {
       [id, bottle_type_id, rawR, wPct, finalMaterialRate,
        materialCostPerBottle, blowC, capC, basicCost,
        gPct, gstAmount, totalCostWithGst, totalCostWithCap,
-       effective_from, userId]
+       effective_from || new Date().toISOString().split('T')[0], userId]
     );
 
     const [rows] = await pool.execute(

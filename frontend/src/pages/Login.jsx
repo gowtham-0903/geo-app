@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import geoLogo from '../../logo/GEO LOGO.png';
 
 export default function Login() {
   const { login }   = useAuth();
@@ -30,11 +31,11 @@ export default function Login() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-navy rounded-3xl mb-5 shadow-lg">
-            <span className="text-white text-3xl font-bold">G</span>
-          </div>
-          <h1 className="text-3xl font-bold text-black tracking-tight">GEO Pet Bottles</h1>
-          <p className="text-gray-400 text-sm mt-2 font-medium">Manufacturing Management System</p>
+          <img
+            src={geoLogo}
+            alt="Geo Packs"
+            className="h-20 w-auto mx-auto"
+          />
         </div>
 
         {/* Card */}

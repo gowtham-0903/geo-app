@@ -19,6 +19,21 @@
 }
 
 @layer utilities {
+  .pt-safe-top {
+    padding-top: max(3rem, env(safe-area-inset-top));
+  }
+
+  @media (max-width: 1023px) {
+    .modal-content > button.w-full {
+      position: sticky;
+      bottom: 0.75rem;
+      z-index: 10;
+      box-shadow: 0 10px 24px rgba(0, 30, 97, 0.22);
+      margin-top: 0.75rem;
+      margin-bottom: max(0.25rem, env(safe-area-inset-bottom));
+    }
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }

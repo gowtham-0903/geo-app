@@ -110,8 +110,8 @@ export default function Production() {
     <Layout title="Production" subtitle="Supervisor">
 
       {/* Date filter + Add button */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex-1">
+      <div className="flex items-center gap-2 mb-6 min-w-0">
+        <div className="flex-1 min-w-0">
           <input
             type="date"
             value={filterDate}
@@ -119,11 +119,23 @@ export default function Production() {
             className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light"
           />
         </div>
+        <div className="hidden lg:flex">
+          <button
+            onClick={openAdd}
+            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          >
+            + Add Entry
+          </button>
+        </div>
+      </div>
+
+      <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
         <button
           onClick={openAdd}
-          className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
+          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg"
+          aria-label="Add production entry"
         >
-          + Add Entry
+          +
         </button>
       </div>
 
@@ -366,7 +378,7 @@ function ProductionCard({ entry, onEdit, onDelete }) {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatBox label="Produced" value={entry.bottles_produced} accent />
         <StatBox label="Preform Used" value={entry.preforms_used} />
         <StatBox label="Waste" value={entry.preform_waste} warn={entry.preform_waste > 0} />

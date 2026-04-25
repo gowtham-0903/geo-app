@@ -20,7 +20,7 @@ export default function Layout({ children, title, subtitle }) {
       {/* Main content */}
       <div className="lg:ml-64 flex flex-col min-h-screen">
         {/* Top header */}
-        <header className="sticky top-0 z-40 bg-app-bg px-5 pt-12 pb-4 lg:pt-8 lg:px-8">
+        <header className="sticky top-0 z-40 bg-app-bg px-5 pt-safe-top pb-4 lg:pt-8 lg:px-8">
           <div className="max-w-mobile mx-auto lg:max-w-none flex items-start justify-between">
             <div>
               {subtitle && (
