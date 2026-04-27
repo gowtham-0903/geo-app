@@ -10,6 +10,7 @@ import Outstanding from './pages/Outstanding';
 import Costing     from './pages/Costing';
 import Expenses    from './pages/Expenses';
 import Masters     from './pages/Masters';
+import Invoices    from './pages/Invoices';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/production"  element={<ProtectedRoute><Production /></ProtectedRoute>} />
           <Route path="/purchase"    element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
           <Route path="/sales"       element={<ProtectedRoute><Sales /></ProtectedRoute>} />
+          <Route path="/invoices"    element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
           <Route path="/outstanding" element={<ProtectedRoute adminOnly><Outstanding /></ProtectedRoute>} />
           <Route path="/costing"     element={<ProtectedRoute adminOnly><Costing /></ProtectedRoute>} />
           <Route path="/expenses"    element={<ProtectedRoute adminOnly><Expenses /></ProtectedRoute>} />
