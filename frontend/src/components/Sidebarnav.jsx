@@ -7,6 +7,7 @@ const adminNav = [
   { to: '/production',  icon: '⚙️', label: 'Production'  },
   { to: '/purchase',    icon: '📦', label: 'Purchase'    },
   { to: '/sales',       icon: '🧾', label: 'Sales'       },
+  { to: '/invoices',    icon: '📄', label: 'Invoices'    },
   { to: '/outstanding', icon: '💰', label: 'Outstanding' },
   { to: '/costing',     icon: '🧮', label: 'Costing'     },
   { to: '/expenses',    icon: '📋', label: 'Expenses'    },

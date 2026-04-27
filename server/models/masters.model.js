@@ -1,25 +1,39 @@
+// server/models/masters.model.js — UPDATED v2
+// Adds customer extra fields: state, state_code, email, billing_address, credit_days
+// Adds bottle_types extra fields: default_blowing_cost, default_cap_cost, hsn_code
+
 const pool = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 
 // ─── BOTTLE TYPES ─────────────────────────────────────────────
 const BottleType = {
   getAll: async () => {
-    const [rows] = await pool.execute('SELECT * FROM bottle_types ORDER BY category, size_ml');
+    const [rows] = await pool.execute(
+      'SELECT * FROM bottle_types ORDER BY category, size_ml'
+    );
     return rows;
   },
-  create: async ({ name, size_ml, weight_grams, category }) => {
+  create: async ({ name, size_ml, weight_grams, category, default_blowing_cost, default_cap_cost, hsn_code }) => {
     const id = uuidv4();
     await pool.execute(
-      'INSERT INTO bottle_types (id, name, size_ml, weight_grams, category) VALUES (?,?,?,?,?)',
-      [id, name, size_ml, weight_grams, category]
+      `INSERT INTO bottle_types
+        (id, name, size_ml, weight_grams, category, default_blowing_cost, default_cap_cost, hsn_code)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [id, name, size_ml, weight_grams, category,
+       default_blowing_cost || 0.75, default_cap_cost || 0, hsn_code || '39233090']
     );
     const [rows] = await pool.execute('SELECT * FROM bottle_types WHERE id=?', [id]);
     return rows[0];
   },
-  update: async (id, { name, size_ml, weight_grams, category }) => {
+  update: async (id, { name, size_ml, weight_grams, category, default_blowing_cost, default_cap_cost, hsn_code }) => {
     await pool.execute(
-      'UPDATE bottle_types SET name=?, size_ml=?, weight_grams=?, category=? WHERE id=?',
-      [name, size_ml, weight_grams, category, id]
+      `UPDATE bottle_types
+       SET name=?, size_ml=?, weight_grams=?, category=?,
+           default_blowing_cost=?, default_cap_cost=?, hsn_code=?
+       WHERE id=?`,
+      [name, size_ml, weight_grams, category,
+       default_blowing_cost || 0.75, default_cap_cost || 0,
+       hsn_code || '39233090', id]
     );
   },
   toggle: async (id, is_active) => {
@@ -67,25 +81,38 @@ const Supplier = {
   },
 };
 
-// ─── CUSTOMERS ────────────────────────────────────────────────
+// ─── CUSTOMERS (UPDATED with extra fields) ────────────────────
 const Customer = {
   getAll: async () => {
     const [rows] = await pool.execute('SELECT * FROM customers ORDER BY name');
     return rows;
   },
-  create: async ({ name, type, contact, address, gstin, opening_balance }) => {
+  create: async ({ name, type, contact, address, gstin, opening_balance,
+                   state, state_code, email, billing_address, credit_days }) => {
     const id = uuidv4();
     await pool.execute(
-      'INSERT INTO customers (id, name, type, contact, address, gstin, opening_balance) VALUES (?,?,?,?,?,?,?)',
-      [id, name, type || 'local', contact || null, address || null, gstin || null, opening_balance || 0]
+      `INSERT INTO customers
+        (id, name, type, contact, address, gstin, opening_balance,
+         state, state_code, email, billing_address, credit_days)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, name, type || 'local', contact || null, address || null,
+       gstin || null, opening_balance || 0,
+       state || 'Tamil Nadu', state_code || '33',
+       email || null, billing_address || null, credit_days || 0]
     );
     const [rows] = await pool.execute('SELECT * FROM customers WHERE id=?', [id]);
     return rows[0];
   },
-  update: async (id, { name, type, contact, address, gstin }) => {
+  update: async (id, { name, type, contact, address, gstin,
+                        state, state_code, email, billing_address, credit_days }) => {
     await pool.execute(
-      'UPDATE customers SET name=?, type=?, contact=?, address=?, gstin=? WHERE id=?',
-      [name, type, contact || null, address || null, gstin || null, id]
+      `UPDATE customers
+       SET name=?, type=?, contact=?, address=?, gstin=?,
+           state=?, state_code=?, email=?, billing_address=?, credit_days=?
+       WHERE id=?`,
+      [name, type, contact || null, address || null, gstin || null,
+       state || 'Tamil Nadu', state_code || '33',
+       email || null, billing_address || null, credit_days || 0, id]
     );
   },
   toggle: async (id, is_active) => {
