@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path . -Force)",
+      "Bash(Select-Object Name)",
+      "Read(//mnt/d/projects/**)",
+      "Read(//mnt/d/projects/geo-app/**)",
+      "PowerShell(mysqldump -u root -pgowtham@0903 --no-data geo_db 2>$null)",
+      "PowerShell(mysql -u root -pgowtham@0903 geo_db -e \"SELECT id, name, email, role, is_active FROM users;\" 2>$null)",
+      "PowerShell(mysql -u root -pgowtham@0903 geo_db -e \"SELECT id, name, email, password_hash, role, is_active FROM users WHERE role='admin';\" 2>$null)",
+      "PowerShell(mysqldump -u root -pgowtham@0903 --single-transaction --routines --triggers geo_db > \"d:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql\" 2>$null; Write-Host \"Done. Lines: $\\(\\(Get-Content 'd:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql'\\).Count\\)\")"
+    ]
+  }
+}
