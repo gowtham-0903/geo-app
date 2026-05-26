@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from './BottomNav';
-import SidebarNav from './SidebarNav';
+import SidebarNav from './Sidebarnav';
 
 export default function Layout({ children, title, subtitle }) {
   const { user, logout } = useAuth();
