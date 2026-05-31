@@ -1,12 +1,9 @@
-// frontend/src/pages/Sales.jsx — UPDATED v2
-// Adds: invoice_display, place_of_supply, narration field
-// Adds: PDF download + preview buttons on each invoice card
-// Adds: FAB for mobile
-
 import { useState, useEffect, useCallback } from 'react';
+import { Plus, Eye, Download, Trash2, Receipt, Store, Truck, X } from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import FormField, { Input, Select } from '../components/FormField';
+import { SkeletonList } from '../components/Skeleton';
 import { salesApi } from '../api/sales.api';
 import { mastersApi } from '../api/masters.api';
 
@@ -29,19 +26,25 @@ export default function Sales() {
   const [form,        setForm]        = useState(emptyForm);
   const [items,       setItems]       = useState([{ ...emptyItem }]);
   const [saving,      setSaving]      = useState(false);
+  const [loading,     setLoading]     = useState(true);
   const [expandedId,  setExpandedId]  = useState(null);
   const [saleItems,   setSaleItems]   = useState({});
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterCust,  setFilterCust]  = useState('');
 
   const load = useCallback(async () => {
-    const [y, m] = filterMonth.split('-');
-    const [r, s] = await Promise.all([
-      salesApi.getMonthly(y, m),
-      salesApi.getSummary(y, m),
-    ]);
-    setEntries(r.data.data);
-    setSummary(s.data.data);
+    setLoading(true);
+    try {
+      const [y, m] = filterMonth.split('-');
+      const [r, s] = await Promise.all([
+        salesApi.getMonthly(y, m),
+        salesApi.getSummary(y, m),
+      ]);
+      setEntries(r.data.data);
+      setSummary(s.data.data);
+    } finally {
+      setLoading(false);
+    }
   }, [filterMonth]);
 
   useEffect(() => {
@@ -50,7 +53,6 @@ export default function Sales() {
     mastersApi.getBottleTypes().then(r => setBottleTypes(r.data.data.filter(b => b.is_active)));
   }, [load]);
 
-  // When customer changes, auto-fill place_of_supply from their state
   function handleCustomerChange(customerId) {
     setF('customer_id', customerId);
     const cust = customers.find(c => c.id === customerId);
@@ -127,26 +129,22 @@ export default function Sales() {
 
   return (
     <Layout title="Sales" subtitle="Supervisor">
-
-      {/* Filters row */}
       <div className="flex items-center gap-2 mb-4 min-w-0">
         <div className="flex-1 min-w-0">
           <input type="month" value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
-            className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light" />
+            className="input-base" />
         </div>
         <div className="hidden lg:flex">
-          <button onClick={openAdd}
-            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl whitespace-nowrap">
-            + Invoice
+          <button onClick={openAdd} className="flex items-center gap-2 btn-primary px-5 py-3">
+            <Plus size={16} /> Invoice
           </button>
         </div>
       </div>
 
-      {/* Customer filter */}
       <div className="mb-6">
         <select value={filterCust} onChange={e => setFilterCust(e.target.value)}
-          className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light appearance-none">
+          className="input-base appearance-none">
           <option value="">All Customers</option>
           {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -155,15 +153,15 @@ export default function Sales() {
       {/* Mobile FAB */}
       <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
         <button onClick={openAdd}
-          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg">
-          +
+          className="w-14 h-14 rounded-full bg-navy text-white flex items-center justify-center shadow-fab">
+          <Plus size={24} />
         </button>
       </div>
 
       {/* Month Summary */}
-      {summary?.invoice_count > 0 && (
+      {!loading && summary?.invoice_count > 0 && (
         <div className="bg-navy rounded-3xl p-5 mb-6">
-          <p className="text-navy-light text-xs font-semibold uppercase tracking-wider mb-3">Month Summary</p>
+          <p className="section-label text-navy-light mb-3">Month Summary</p>
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
               <p className="text-2xl font-bold text-white">₹{fmt(summary.total_sales)}</p>
@@ -187,26 +185,32 @@ export default function Sales() {
         </div>
       )}
 
-      {/* Sales list */}
-      <div className="space-y-3">
-        {filtered.map(entry => (
-          <SaleCard
-            key={entry.id}
-            entry={entry}
-            expanded={expandedId === entry.id}
-            items={saleItems[entry.id]}
-            onToggle={() => toggleExpand(entry.id)}
-            onDelete={() => handleDelete(entry.id)}
-          />
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-3">🧾</p>
-          <p className="text-gray-500 font-medium">No sales this month</p>
-          <p className="text-gray-400 text-sm mt-1">Tap + Invoice to raise a sale</p>
-        </div>
+      {loading ? (
+        <SkeletonList count={4} />
+      ) : (
+        <>
+          <div className="space-y-3">
+            {filtered.map(entry => (
+              <SaleCard
+                key={entry.id}
+                entry={entry}
+                expanded={expandedId === entry.id}
+                items={saleItems[entry.id]}
+                onToggle={() => toggleExpand(entry.id)}
+                onDelete={() => handleDelete(entry.id)}
+              />
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-navy-faint rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <Receipt size={28} className="text-navy-light" />
+              </div>
+              <p className="text-gray-500 font-semibold">No sales this month</p>
+              <p className="text-gray-400 text-sm mt-1">Tap + to raise a sale invoice</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* New Invoice Modal */}
@@ -232,12 +236,15 @@ export default function Sales() {
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Sale Type">
             <div className="flex gap-2">
-              {['local', 'despatch'].map(t => (
-                <button key={t} onClick={() => setF('sale_type', t)}
-                  className={`flex-1 py-3 rounded-2xl text-xs font-semibold transition ${
-                    form.sale_type === t ? 'bg-navy text-white' : 'bg-app-bg text-gray-500'
+              {[
+                { value: 'local',    label: 'Local',    icon: Store },
+                { value: 'despatch', label: 'Despatch', icon: Truck },
+              ].map(t => (
+                <button key={t.value} onClick={() => setF('sale_type', t.value)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-3 rounded-2xl text-xs font-semibold transition ${
+                    form.sale_type === t.value ? 'bg-navy text-white' : 'bg-app-bg text-gray-500'
                   }`}>
-                  {t === 'local' ? '🏪 Local' : '🚛 Despatch'}
+                  <t.icon size={13} /> {t.label}
                 </button>
               ))}
             </div>
@@ -249,24 +256,25 @@ export default function Sales() {
 
         {/* Line items */}
         <div className="flex items-center justify-between mb-3 mt-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Items</p>
+          <p className="section-label">Items</p>
           <button onClick={addItem}
-            className="text-xs font-semibold text-navy bg-navy-light/20 px-3 py-1 rounded-full">
-            + Add Item
+            className="text-xs font-semibold text-navy bg-navy-faint px-3 py-1.5 rounded-full flex items-center gap-1">
+            <Plus size={12} /> Add Item
           </button>
         </div>
 
         <div className="space-y-3 mb-4">
           {items.map((item, i) => (
-            <div key={i} className="bg-app-bg rounded-2xl p-2.5 text-xs">
+            <div key={i} className="bg-app-bg rounded-2xl p-3 text-xs">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-gray-500">Item {i + 1}</p>
                 {items.length > 1 && (
-                  <button onClick={() => removeItem(i)} className="text-red-400 text-xs">✕ Remove</button>
+                  <button onClick={() => removeItem(i)} className="text-danger flex items-center gap-1">
+                    <X size={12} /> Remove
+                  </button>
                 )}
               </div>
-              <Select value={item.bottle_type_id} onChange={e => setItem(i, 'bottle_type_id', e.target.value)}
-                className="text-xs px-3 py-2.5 rounded-xl">
+              <Select value={item.bottle_type_id} onChange={e => setItem(i, 'bottle_type_id', e.target.value)}>
                 <option value="">Select bottle type...</option>
                 {bottleTypes.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
@@ -277,17 +285,17 @@ export default function Sales() {
                   <p className="text-xs text-gray-400 mb-1">Qty (Nos)</p>
                   <Input type="number" value={item.quantity}
                     onChange={e => setItem(i, 'quantity', e.target.value)}
-                    placeholder="1000" className="text-xs px-3 py-2.5 rounded-xl" />
+                    placeholder="1000" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Rate ₹/Nos</p>
                   <Input type="number" step="0.01" value={item.rate}
                     onChange={e => setItem(i, 'rate', e.target.value)}
-                    placeholder="3.50" className="text-xs px-3 py-2.5 rounded-xl" />
+                    placeholder="3.50" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Amount</p>
-                  <div className="bg-white rounded-xl px-2.5 py-2.5 text-xs font-bold text-navy">
+                  <div className="bg-white rounded-2xl px-3 py-3 text-xs font-bold text-navy">
                     ₹{fmt(item.amount || 0)}
                   </div>
                 </div>
@@ -321,7 +329,7 @@ export default function Sales() {
         </FormField>
 
         <button onClick={handleSave} disabled={saving || !form.customer_id}
-          className="w-full bg-navy text-white font-semibold py-4 rounded-2xl disabled:opacity-40 transition text-sm mt-2">
+          className="w-full btn-primary">
           {saving ? 'Saving...' : 'Save Invoice'}
         </button>
       </Modal>
@@ -329,7 +337,6 @@ export default function Sales() {
   );
 }
 
-// ─── SALE CARD ────────────────────────────────────────────────
 function SaleCard({ entry, expanded, items, onToggle, onDelete }) {
   const [downloading, setDownloading] = useState(false);
 
@@ -337,7 +344,7 @@ function SaleCard({ entry, expanded, items, onToggle, onDelete }) {
     e.stopPropagation();
     setDownloading(true);
     try {
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/sales/${entry.id}/${mode === 'download' ? 'pdf' : 'preview'}`;
+      const url = `${import.meta.env.VITE_API_URL || '/api'}/sales/${entry.id}/${mode === 'download' ? 'pdf' : 'preview'}`;
       if (mode === 'preview') {
         window.open(url, '_blank');
       } else {
@@ -353,21 +360,21 @@ function SaleCard({ entry, expanded, items, onToggle, onDelete }) {
   }
 
   return (
-    <div className="bg-white rounded-3xl overflow-hidden">
+    <div className="bg-white rounded-3xl overflow-hidden shadow-card">
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle}>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {/* Invoice number badge */}
               {entry.invoice_display && (
-                <span className="text-xs font-bold bg-navy text-white px-2 py-0.5 rounded-full">
-                  {entry.invoice_display}
-                </span>
+                <span className="badge bg-navy text-white">{entry.invoice_display}</span>
               )}
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                entry.sale_type === 'local' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
+              <span className={`badge ${
+                entry.sale_type === 'local' ? 'bg-info-bg text-info' : 'bg-warning-bg text-warning'
               }`}>
-                {entry.sale_type === 'local' ? '🏪 Local' : '🚛 Despatch'}
+                {entry.sale_type === 'local'
+                  ? <><Store size={10} className="inline mr-1" />Local</>
+                  : <><Truck size={10} className="inline mr-1" />Despatch</>
+                }
               </span>
             </div>
             <p className="text-sm font-bold text-black truncate">{entry.customer_name}</p>
@@ -377,34 +384,28 @@ function SaleCard({ entry, expanded, items, onToggle, onDelete }) {
             </p>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
             <div className="text-right mr-1">
               <p className="text-sm font-bold text-navy">₹{Number(entry.bill_amount).toLocaleString('en-IN')}</p>
               <p className="text-xs text-gray-400">incl. GST</p>
             </div>
-            {/* Preview in browser */}
-            <button onClick={e => handleDownload(e, 'preview')}
-              title="Preview PDF"
-              className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 text-xs hover:bg-blue-100 transition">
-              👁️
+            <button onClick={e => handleDownload(e, 'preview')} title="Preview"
+              className="icon-btn bg-info-bg text-info hover:bg-blue-100">
+              <Eye size={14} />
             </button>
-            {/* Download PDF */}
-            <button onClick={e => handleDownload(e, 'download')}
-              title="Download Invoice PDF"
+            <button onClick={e => handleDownload(e, 'download')} title="Download PDF"
               disabled={downloading}
-              className="w-8 h-8 flex items-center justify-center rounded-xl bg-green-50 text-green-600 text-xs hover:bg-green-100 transition disabled:opacity-50">
-              {downloading ? '⏳' : '⬇️'}
+              className="icon-btn bg-success-bg text-success hover:bg-green-100 disabled:opacity-50">
+              <Download size={14} />
             </button>
             <button onClick={onDelete}
-              className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-400 text-xs hover:bg-red-100 transition">
-              🗑️
+              className="icon-btn bg-danger-bg text-danger hover:bg-red-100">
+              <Trash2 size={14} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Expanded items */}
       {expanded && (
         <div className="border-t border-gray-50 px-4 pb-4 pt-3">
           {items ? (

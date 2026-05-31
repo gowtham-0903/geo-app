@@ -1,16 +1,22 @@
-// frontend/src/pages/Masters.jsx — UPDATED v2
-// Adds: Tab 7 = Company Settings
-// Updates: Customer modal with state, email, billing_address, credit_days
-// Updates: Bottle Types modal with hsn_code, default_blowing_cost, default_cap_cost
-
 import { useState, useEffect, useCallback } from 'react';
+import {
+  Plus, Pencil, Check, X, Database, Cpu, Truck, Users,
+  Tag, Store,
+} from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import FormField, { Input, Select } from '../components/FormField';
 import { mastersApi } from '../api/masters.api';
 import CompanySettingsTab from './CompanySettings';
 
-const TABS = ['Bottle Types', 'Machines', 'Suppliers', 'Customers', 'Expense Categories', 'Company'];
+const TABS = [
+  { label: 'Bottle Types',       icon: Database },
+  { label: 'Machines',           icon: Cpu      },
+  { label: 'Suppliers',          icon: Truck    },
+  { label: 'Customers',          icon: Users    },
+  { label: 'Expense Categories', icon: Tag      },
+  { label: 'Company',            icon: Store    },
+];
 
 const INDIAN_STATES = [
   ['Andhra Pradesh','28'],['Arunachal Pradesh','12'],['Assam','18'],
@@ -31,18 +37,17 @@ export default function Masters() {
   return (
     <Layout title="Masters" subtitle="Admin">
       {/* Tabs — scrollable */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-[4px]">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-1">
         {TABS.map((tab, i) => (
           <button
-            key={tab}
+            key={tab.label}
             onClick={() => setActiveTab(i)}
-            className={`flex-shrink-0 px-4 py-2 rounded-2xl text-sm font-semibold transition-all ${
-              activeTab === i
-                ? 'bg-navy text-white'
-                : 'bg-white text-gray-500 hover:bg-gray-100'
+            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+              activeTab === i ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-100 shadow-card'
             }`}
           >
-            {i === 5 ? '🏢 ' : ''}{tab}
+            <tab.icon size={14} />
+            {tab.label}
           </button>
         ))}
       </div>
@@ -57,7 +62,6 @@ export default function Masters() {
   );
 }
 
-// ─── SHARED LIST WRAPPER ──────────────────────────────────────
 function MasterList({ title, onAdd, children }) {
   return (
     <div>
@@ -65,19 +69,19 @@ function MasterList({ title, onAdd, children }) {
         <p className="text-sm font-semibold text-gray-500">{title}</p>
         {onAdd && (
           <button onClick={onAdd}
-            className="flex items-center gap-2 bg-navy text-white text-sm font-semibold px-4 py-2 rounded-2xl hover:bg-opacity-90 transition">
-            + Add
+            className="flex items-center gap-1.5 btn-primary px-4 py-2 text-xs">
+            <Plus size={14} /> Add
           </button>
         )}
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="space-y-2">{children}</div>
     </div>
   );
 }
 
 function MasterRow({ title, subtitle, is_active, onEdit, onToggle }) {
   return (
-    <div className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between">
+    <div className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-card">
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold truncate ${is_active ? 'text-black' : 'text-gray-400'}`}>{title}</p>
         {subtitle && <p className="text-xs text-gray-400 mt-0.5 truncate">{subtitle}</p>}
@@ -85,14 +89,17 @@ function MasterRow({ title, subtitle, is_active, onEdit, onToggle }) {
       <div className="flex items-center gap-2 ml-3">
         {onEdit && (
           <button onClick={onEdit}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-app-bg text-gray-500 hover:bg-navy-light transition text-xs">✏️</button>
+            className="icon-btn bg-app-bg text-gray-500 hover:bg-navy-faint hover:text-navy">
+            <Pencil size={14} />
+          </button>
         )}
         <button onClick={onToggle}
-          className={`w-8 h-8 flex items-center justify-center rounded-xl transition text-xs ${
-            is_active ? 'bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500'
-                      : 'bg-red-100 text-red-500 hover:bg-green-100 hover:text-green-600'
+          className={`icon-btn transition ${
+            is_active
+              ? 'bg-success-bg text-success hover:bg-danger-bg hover:text-danger'
+              : 'bg-danger-bg text-danger hover:bg-success-bg hover:text-success'
           }`}>
-          {is_active ? '✓' : '✕'}
+          {is_active ? <Check size={14} /> : <X size={14} />}
         </button>
       </div>
     </div>
@@ -106,7 +113,7 @@ function BottleTypesTab() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     name: '', size_ml: '', weight_grams: '', category: 'water',
-    hsn_code: '39233090', default_blowing_cost: '0.75', default_cap_cost: '0'
+    hsn_code: '39233090', default_blowing_cost: '0.75', default_cap_cost: '0',
   });
   const [saving, setSaving] = useState(false);
 
@@ -129,7 +136,7 @@ function BottleTypesTab() {
       name: item.name, size_ml: item.size_ml, weight_grams: item.weight_grams,
       category: item.category, hsn_code: item.hsn_code || '39233090',
       default_blowing_cost: item.default_blowing_cost || '0.75',
-      default_cap_cost: item.default_cap_cost || '0'
+      default_cap_cost: item.default_cap_cost || '0',
     });
     setModal(true);
   }
@@ -143,15 +150,14 @@ function BottleTypesTab() {
     } finally { setSaving(false); }
   }
 
-  const categories = ['water', 'oil', 'uutru', 'amla', 'specialty'];
-
   return (
     <>
       <MasterList title={`${items.length} bottle types`} onAdd={openAdd}>
         {items.map(item => (
           <MasterRow key={item.id} title={item.name}
             subtitle={`${item.size_ml}ml · ${item.weight_grams}g · HSN ${item.hsn_code || '39233090'} · Blow ₹${Number(item.default_blowing_cost || 0.75).toFixed(4)}`}
-            is_active={item.is_active} onEdit={() => openEdit(item)} onToggle={async () => { await mastersApi.toggleBottleType(item.id, !item.is_active); load(); }} />
+            is_active={item.is_active} onEdit={() => openEdit(item)}
+            onToggle={async () => { await mastersApi.toggleBottleType(item.id, !item.is_active); load(); }} />
         ))}
       </MasterList>
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit Bottle Type' : 'Add Bottle Type'}>
@@ -171,7 +177,7 @@ function BottleTypesTab() {
         </div>
         <FormField label="Category">
           <Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {['water','oil','uutru','amla','specialty'].map(c => <option key={c} value={c}>{c}</option>)}
           </Select>
         </FormField>
         <div className="grid grid-cols-2 gap-3">
@@ -179,11 +185,10 @@ function BottleTypesTab() {
             <Input type="number" step="0.0001" value={form.default_blowing_cost} onChange={e => setForm(f => ({ ...f, default_blowing_cost: e.target.value }))} placeholder="0.75" />
           </FormField>
           <FormField label="Default Cap Cost (₹)">
-            <Input type="number" step="0.0001" value={form.default_cap_cost} onChange={e => setForm(f => ({ ...f, default_cap_cost: e.target.value }))} placeholder="0 or 0.45" />
+            <Input type="number" step="0.0001" value={form.default_cap_cost} onChange={e => setForm(f => ({ ...f, default_cap_cost: e.target.value }))} placeholder="0" />
           </FormField>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="w-full bg-navy text-white font-semibold py-3 rounded-2xl mt-2 disabled:opacity-50">
+        <button onClick={handleSave} disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Bottle Type'}
         </button>
       </Modal>
@@ -208,7 +213,7 @@ function MachinesTab() {
 
   return (
     <>
-      <MasterList title="5 blowing machines">
+      <MasterList title={`${items.length} machines`}>
         {items.map(item => (
           <MasterRow key={item.id} title={`Machine ${item.machine_number}`} subtitle={item.name}
             is_active={item.is_active}
@@ -220,8 +225,13 @@ function MachinesTab() {
         <FormField label="Label">
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Blow-1" />
         </FormField>
-        <button onClick={async () => { setSaving(true); await mastersApi.updateMachine(editing.id, { name }); await load(); setModal(false); setSaving(false); }}
-          disabled={saving} className="w-full bg-navy text-white font-semibold py-3 rounded-2xl mt-2 disabled:opacity-50">
+        <button
+          onClick={async () => {
+            setSaving(true);
+            await mastersApi.updateMachine(editing.id, { name });
+            await load(); setModal(false); setSaving(false);
+          }}
+          disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : 'Update Machine'}
         </button>
       </Modal>
@@ -246,7 +256,8 @@ function SuppliersTab() {
 
   return (
     <>
-      <MasterList title={`${items.length} suppliers`} onAdd={() => { setEditing(null); setForm({ name: '', type: 'preform', contact: '', gstin: '' }); setModal(true); }}>
+      <MasterList title={`${items.length} suppliers`}
+        onAdd={() => { setEditing(null); setForm({ name: '', type: 'preform', contact: '', gstin: '' }); setModal(true); }}>
         {items.map(item => (
           <MasterRow key={item.id} title={item.name}
             subtitle={`${item.type} · OB: ₹${Number(item.opening_balance).toLocaleString('en-IN')}`}
@@ -256,18 +267,32 @@ function SuppliersTab() {
         ))}
       </MasterList>
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit Supplier' : 'Add Supplier'}>
-        <FormField label="Name"><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Supplier name" /></FormField>
+        <FormField label="Name">
+          <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Supplier name" />
+        </FormField>
         <FormField label="Type">
           <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-            <option value="preform">Preform</option><option value="caps">Caps</option>
-            <option value="polybag">Poly Bag</option><option value="engineering">Engineering</option>
+            <option value="preform">Preform</option>
+            <option value="caps">Caps</option>
+            <option value="polybag">Poly Bag</option>
+            <option value="engineering">Engineering</option>
             <option value="other">Other</option>
           </Select>
         </FormField>
-        <FormField label="Contact"><Input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="Phone number" /></FormField>
-        <FormField label="GSTIN (optional)"><Input value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value }))} placeholder="GST number" /></FormField>
-        <button onClick={async () => { setSaving(true); if (editing) await mastersApi.updateSupplier(editing.id, form); else await mastersApi.createSupplier(form); await load(); setModal(false); setSaving(false); }}
-          disabled={saving} className="w-full bg-navy text-white font-semibold py-3 rounded-2xl mt-2 disabled:opacity-50">
+        <FormField label="Contact">
+          <Input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="Phone number" />
+        </FormField>
+        <FormField label="GSTIN (optional)">
+          <Input value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value }))} placeholder="GST number" />
+        </FormField>
+        <button
+          onClick={async () => {
+            setSaving(true);
+            if (editing) await mastersApi.updateSupplier(editing.id, form);
+            else await mastersApi.createSupplier(form);
+            await load(); setModal(false); setSaving(false);
+          }}
+          disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Supplier'}
         </button>
       </Modal>
@@ -275,14 +300,14 @@ function SuppliersTab() {
   );
 }
 
-// ─── CUSTOMERS (UPDATED with extra fields) ────────────────────
+// ─── CUSTOMERS ────────────────────────────────────────────────
 function CustomersTab() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     name: '', type: 'local', contact: '', address: '', gstin: '',
-    state: 'Tamil Nadu', state_code: '33', email: '', billing_address: '', credit_days: '0'
+    state: 'Tamil Nadu', state_code: '33', email: '', billing_address: '', credit_days: '0',
   });
   const [saving, setSaving] = useState(false);
 
@@ -317,7 +342,7 @@ function CustomersTab() {
       address: item.address || '', gstin: item.gstin || '',
       state: item.state || 'Tamil Nadu', state_code: item.state_code || '33',
       email: item.email || '', billing_address: item.billing_address || '',
-      credit_days: String(item.credit_days || 0)
+      credit_days: String(item.credit_days || 0),
     });
     setModal(true);
   }
@@ -343,12 +368,14 @@ function CustomersTab() {
         ))}
       </MasterList>
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit Customer' : 'Add Customer'}>
-        <FormField label="Name"><Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="Customer name" /></FormField>
+        <FormField label="Name">
+          <Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="Customer name" />
+        </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Type">
             <Select value={form.type} onChange={e => setF('type', e.target.value)}>
-              <option value="local">🏪 Local (Walk-in)</option>
-              <option value="despatch">🚛 Despatch (Truck)</option>
+              <option value="local">Local (Walk-in)</option>
+              <option value="despatch">Despatch (Truck)</option>
             </Select>
           </FormField>
           <FormField label="Credit Days">
@@ -382,8 +409,7 @@ function CustomersTab() {
         <FormField label="Billing Address (if different)">
           <Input value={form.billing_address} onChange={e => setF('billing_address', e.target.value)} placeholder="Billing address" />
         </FormField>
-        <button onClick={handleSave} disabled={saving}
-          className="w-full bg-navy text-white font-semibold py-3 rounded-2xl mt-2 disabled:opacity-50">
+        <button onClick={handleSave} disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Customer'}
         </button>
       </Modal>
@@ -408,7 +434,8 @@ function ExpenseCategoriesTab() {
 
   return (
     <>
-      <MasterList title={`${items.length} categories`} onAdd={() => { setEditing(null); setName(''); setModal(true); }}>
+      <MasterList title={`${items.length} categories`}
+        onAdd={() => { setEditing(null); setName(''); setModal(true); }}>
         {items.map(item => (
           <MasterRow key={item.id} title={item.name} is_active={item.is_active}
             onEdit={() => { setEditing(item); setName(item.name); setModal(true); }}
@@ -419,8 +446,14 @@ function ExpenseCategoriesTab() {
         <FormField label="Category Name">
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Electricity" />
         </FormField>
-        <button onClick={async () => { setSaving(true); if (editing) await mastersApi.updateExpenseCategory(editing.id, { name }); else await mastersApi.createExpenseCategory({ name }); await load(); setModal(false); setSaving(false); }}
-          disabled={saving} className="w-full bg-navy text-white font-semibold py-3 rounded-2xl mt-2 disabled:opacity-50">
+        <button
+          onClick={async () => {
+            setSaving(true);
+            if (editing) await mastersApi.updateExpenseCategory(editing.id, { name });
+            else await mastersApi.createExpenseCategory({ name });
+            await load(); setModal(false); setSaving(false);
+          }}
+          disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Category'}
         </button>
       </Modal>

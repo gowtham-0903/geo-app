@@ -1,6 +1,5 @@
-// frontend/src/pages/CompanySettings.jsx
-// Tab 7 inside Masters — editable company details used in invoices
 import { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import FormField, { Input, Select } from '../components/FormField';
 import api from '../api/axios';
 
@@ -138,21 +137,23 @@ export default function CompanySettingsTab() {
             </p>
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
-          ⚠️ Invoice numbers auto-increment on each sale. The prefix appears on all invoices.
-        </p>
+        <div className="flex items-start gap-2 mt-1">
+          <AlertTriangle size={12} className="text-warning flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-gray-400">
+            Invoice numbers auto-increment on each sale. The prefix appears on all invoices.
+          </p>
+        </div>
       </Section>
 
       <button
         onClick={handleSave}
         disabled={saving}
-        className={`w-full font-semibold py-4 rounded-2xl transition text-sm ${
-          saved
-            ? 'bg-green-500 text-white'
-            : 'bg-navy text-white disabled:opacity-40'
+        className={`w-full flex items-center justify-center gap-2 font-semibold py-4 rounded-2xl transition text-sm ${
+          saved ? 'bg-success text-white' : 'btn-primary'
         }`}
       >
-        {saving ? 'Saving...' : saved ? '✓ Settings Saved!' : 'Save Company Settings'}
+        {saved && <CheckCircle2 size={16} />}
+        {saving ? 'Saving...' : saved ? 'Settings Saved!' : 'Save Company Settings'}
       </button>
     </div>
   );

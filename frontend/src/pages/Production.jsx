@@ -1,24 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Sunrise, Moon, Settings, AlertTriangle } from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import FormField, { Input, Select } from '../components/FormField';
+import { SkeletonList } from '../components/Skeleton';
 import { productionApi } from '../api/production.api';
 import { mastersApi } from '../api/masters.api';
 
 const today = () => new Date().toISOString().split('T')[0];
 
 const emptyForm = {
-  date: today(),
-  shift: 'morning',
-  machine_id: '',
-  bottle_type_id: '',
-  opening_preform_stock: '',
-  preforms_received: '',
-  preforms_used: '',
-  bottles_produced: '',
-  preform_waste: '',
-  bottle_damage: '',
-  working_hours: '',
+  date: today(), shift: 'morning', machine_id: '', bottle_type_id: '',
+  opening_preform_stock: '', preforms_received: '', preforms_used: '',
+  bottles_produced: '', preform_waste: '', bottle_damage: '', working_hours: '',
 };
 
 export default function Production() {
@@ -29,11 +23,17 @@ export default function Production() {
   const [editing,     setEditing]     = useState(null);
   const [form,        setForm]        = useState(emptyForm);
   const [saving,      setSaving]      = useState(false);
+  const [loading,     setLoading]     = useState(true);
   const [filterDate,  setFilterDate]  = useState(today());
 
   const load = useCallback(async () => {
-    const r = await productionApi.getAll({ date: filterDate });
-    setEntries(r.data.data);
+    setLoading(true);
+    try {
+      const r = await productionApi.getAll({ date: filterDate });
+      setEntries(r.data.data);
+    } finally {
+      setLoading(false);
+    }
   }, [filterDate]);
 
   useEffect(() => {
@@ -74,7 +74,6 @@ export default function Production() {
     setForm(f => ({ ...f, [field]: value }));
   }
 
-  // Live computed closing stock
   const closingStock =
     (parseInt(form.opening_preform_stock) || 0) +
     (parseInt(form.preforms_received)     || 0) -
@@ -102,13 +101,11 @@ export default function Production() {
     await load();
   }
 
-  // Group entries by shift for display
   const morning = entries.filter(e => e.shift === 'morning');
   const night   = entries.filter(e => e.shift === 'night');
 
   return (
     <Layout title="Production" subtitle="Supervisor">
-
       {/* Date filter + Add button */}
       <div className="flex items-center gap-2 mb-6 min-w-0">
         <div className="flex-1 min-w-0">
@@ -116,33 +113,31 @@ export default function Production() {
             type="date"
             value={filterDate}
             onChange={e => setFilterDate(e.target.value)}
-            className="w-full bg-white border-0 rounded-2xl px-4 py-3 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-navy-light"
+            className="input-base"
           />
         </div>
         <div className="hidden lg:flex">
-          <button
-            onClick={openAdd}
-            className="bg-navy text-white text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-opacity-90 transition whitespace-nowrap"
-          >
-            + Add Entry
+          <button onClick={openAdd} className="flex items-center gap-2 btn-primary px-5 py-3">
+            <Plus size={16} /> Add Entry
           </button>
         </div>
       </div>
 
+      {/* Mobile FAB */}
       <div className="lg:hidden fixed bottom-20 right-4 z-[45]">
         <button
           onClick={openAdd}
-          className="w-14 h-14 rounded-full bg-navy text-white text-3xl leading-none flex items-center justify-center shadow-lg"
+          className="w-14 h-14 rounded-full bg-navy text-white flex items-center justify-center shadow-fab"
           aria-label="Add production entry"
         >
-          +
+          <Plus size={24} />
         </button>
       </div>
 
       {/* Summary bar */}
-      {entries.length > 0 && (
+      {!loading && entries.length > 0 && (
         <div className="bg-navy rounded-3xl p-5 mb-6">
-          <p className="text-navy-light text-xs font-semibold uppercase tracking-wider mb-3">
+          <p className="section-label text-navy-light mb-3">
             {filterDate === today() ? "Today's" : filterDate} Production
           </p>
           <div className="grid grid-cols-3 gap-4">
@@ -168,32 +163,26 @@ export default function Production() {
         </div>
       )}
 
-      {/* Morning shift */}
-      {morning.length > 0 && (
-        <ShiftSection
-          label="Morning Shift"
-          entries={morning}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {/* Night shift */}
-      {night.length > 0 && (
-        <ShiftSection
-          label="Night Shift"
-          entries={night}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {entries.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-3">⚙️</p>
-          <p className="text-gray-500 font-medium">No entries for this date</p>
-          <p className="text-gray-400 text-sm mt-1">Tap + Add Entry to start</p>
-        </div>
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : (
+        <>
+          {morning.length > 0 && (
+            <ShiftSection label="Morning Shift" icon={Sunrise} entries={morning} onEdit={openEdit} onDelete={handleDelete} />
+          )}
+          {night.length > 0 && (
+            <ShiftSection label="Night Shift" icon={Moon} entries={night} onEdit={openEdit} onDelete={handleDelete} />
+          )}
+          {entries.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-navy-faint rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <Settings size={28} className="text-navy-light" />
+              </div>
+              <p className="text-gray-500 font-semibold">No entries for this date</p>
+              <p className="text-gray-400 text-sm mt-1">Tap + to add an entry</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Form Modal */}
@@ -202,31 +191,33 @@ export default function Production() {
         onClose={() => setModal(false)}
         title={editing ? 'Edit Entry' : 'New Production Entry'}
       >
-        {/* Date & Shift */}
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Date">
             <Input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
           </FormField>
           <FormField label="Shift">
             <div className="flex gap-2 mt-1">
-              {['morning', 'night'].map(s => (
+              {[
+                { value: 'morning', label: 'Morning', icon: Sunrise },
+                { value: 'night',   label: 'Night',   icon: Moon    },
+              ].map(s => (
                 <button
-                  key={s}
-                  onClick={() => set('shift', s)}
-                  className={`flex-1 py-3 rounded-2xl text-xs font-semibold transition ${
-                    form.shift === s
+                  key={s.value}
+                  onClick={() => set('shift', s.value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-xs font-semibold transition ${
+                    form.shift === s.value
                       ? 'bg-navy text-white'
                       : 'bg-app-bg text-gray-500'
                   }`}
                 >
-                  {s === 'morning' ? '🌅 Morn' : '🌙 Night'}
+                  <s.icon size={13} />
+                  {s.label}
                 </button>
               ))}
             </div>
           </FormField>
         </div>
 
-        {/* Machine selector */}
         <FormField label="Machine">
           <div className="flex gap-2 flex-wrap">
             {machines.map(m => (
@@ -234,9 +225,7 @@ export default function Production() {
                 key={m.id}
                 onClick={() => set('machine_id', m.id)}
                 className={`px-4 py-2 rounded-2xl text-sm font-semibold transition ${
-                  form.machine_id === m.id
-                    ? 'bg-navy text-white'
-                    : 'bg-app-bg text-gray-500'
+                  form.machine_id === m.id ? 'bg-navy text-white' : 'bg-app-bg text-gray-500'
                 }`}
               >
                 M{m.machine_number}
@@ -245,12 +234,8 @@ export default function Production() {
           </div>
         </FormField>
 
-        {/* Bottle type */}
         <FormField label="Bottle Type">
-          <Select
-            value={form.bottle_type_id}
-            onChange={e => set('bottle_type_id', e.target.value)}
-          >
+          <Select value={form.bottle_type_id} onChange={e => set('bottle_type_id', e.target.value)}>
             <option value="">Select bottle type...</option>
             {bottleTypes.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>
@@ -258,10 +243,7 @@ export default function Production() {
           </Select>
         </FormField>
 
-        {/* Preform section */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-2">
-          Preform Details
-        </p>
+        <p className="section-label mb-3 mt-2">Preform Details</p>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Opening Stock">
             <Input type="number" value={form.opening_preform_stock}
@@ -281,18 +263,14 @@ export default function Production() {
           </FormField>
         </div>
 
-        {/* Live closing stock */}
-        <div className="bg-navy-light/20 rounded-2xl px-4 py-3 mb-4 flex items-center justify-between">
+        <div className="bg-navy-faint rounded-2xl px-4 py-3 mb-4 flex items-center justify-between">
           <span className="text-xs font-semibold text-navy">Closing Preform Stock</span>
           <span className={`text-lg font-bold ${closingStock < 0 ? 'text-red-500' : 'text-navy'}`}>
             {closingStock}
           </span>
         </div>
 
-        {/* Bottle section */}
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          Bottle Details
-        </p>
+        <p className="section-label mb-3">Bottle Details</p>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Bottles Produced">
             <Input type="number" value={form.bottles_produced}
@@ -307,9 +285,7 @@ export default function Production() {
               onChange={e => set('working_hours', e.target.value)} placeholder="8" />
           </FormField>
           <div className="flex flex-col justify-end pb-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Prod / Hour
-            </p>
+            <p className="section-label mb-2">Prod / Hour</p>
             <div className="bg-app-bg rounded-2xl px-4 py-3">
               <span className="text-sm font-bold text-navy">{prodPerHour}</span>
             </div>
@@ -319,7 +295,7 @@ export default function Production() {
         <button
           onClick={handleSave}
           disabled={saving || !form.machine_id || !form.bottle_type_id}
-          className="w-full bg-navy text-white font-semibold py-4 rounded-2xl mt-2 disabled:opacity-40 transition text-sm"
+          className="w-full btn-primary"
         >
           {saving ? 'Saving...' : editing ? 'Update Entry' : 'Save Entry'}
         </button>
@@ -328,14 +304,13 @@ export default function Production() {
   );
 }
 
-// ─── SHIFT SECTION ────────────────────────────────────────────
-function ShiftSection({ label, entries, onEdit, onDelete }) {
+function ShiftSection({ label, icon: Icon, entries, onEdit, onDelete }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm">{label.includes('Morning') ? '🌅' : '🌙'}</span>
+        <Icon size={15} className="text-gray-400" />
         <p className="text-sm font-bold text-black">{label}</p>
-        <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full">
+        <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full shadow-card">
           {entries.length} entries
         </span>
       </div>
@@ -353,11 +328,9 @@ function ShiftSection({ label, entries, onEdit, onDelete }) {
   );
 }
 
-// ─── PRODUCTION CARD ──────────────────────────────────────────
 function ProductionCard({ entry, onEdit, onDelete }) {
   return (
-    <div className="bg-white rounded-3xl p-4">
-      {/* Header */}
+    <div className="bg-white rounded-3xl p-4 shadow-card">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-bold text-black">{entry.bottle_name}</p>
@@ -366,18 +339,21 @@ function ProductionCard({ entry, onEdit, onDelete }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-app-bg text-gray-500 text-xs hover:bg-navy-light transition">
-            ✏️
+          <button
+            onClick={onEdit}
+            className="icon-btn bg-app-bg text-gray-500 hover:bg-navy-faint hover:text-navy"
+          >
+            <Pencil size={14} />
           </button>
-          <button onClick={onDelete}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-400 text-xs hover:bg-red-100 transition">
-            🗑️
+          <button
+            onClick={onDelete}
+            className="icon-btn bg-danger-bg text-danger hover:bg-red-100"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <StatBox label="Produced" value={entry.bottles_produced} accent />
         <StatBox label="Preform Used" value={entry.preforms_used} />
@@ -385,7 +361,6 @@ function ProductionCard({ entry, onEdit, onDelete }) {
         <StatBox label="Damage" value={entry.bottle_damage} warn={entry.bottle_damage > 0} />
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
         <span className="text-xs text-gray-400">
           Closing Stock: <span className="font-semibold text-black">{entry.closing_preform_stock}</span>
@@ -405,10 +380,10 @@ function ProductionCard({ entry, onEdit, onDelete }) {
 function StatBox({ label, value, accent, warn }) {
   return (
     <div className={`rounded-2xl p-2 text-center ${
-      accent ? 'bg-navy' : warn && value > 0 ? 'bg-red-50' : 'bg-app-bg'
+      accent ? 'bg-navy' : warn && value > 0 ? 'bg-danger-bg' : 'bg-app-bg'
     }`}>
       <p className={`text-base font-bold ${
-        accent ? 'text-white' : warn && value > 0 ? 'text-red-500' : 'text-black'
+        accent ? 'text-white' : warn && value > 0 ? 'text-danger' : 'text-black'
       }`}>{value}</p>
       <p className={`text-xs mt-0.5 leading-tight ${
         accent ? 'text-navy-light' : 'text-gray-400'
