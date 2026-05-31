@@ -54,11 +54,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        # npm install (not ci) because esbuild/vite have platform-specific
+        # optional binaries that differ between Windows (dev) and Linux (CI)
+        run: npm install
 
       - name: Run tests
         run: npm test
