@@ -85,7 +85,8 @@ jobs:
             set -e
             cd /var/www/geo-app
 
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             # Build React frontend inside Docker (no Node.js needed on host)
             docker compose --profile build run --rm frontend-builder
