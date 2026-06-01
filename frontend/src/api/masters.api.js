@@ -9,6 +9,7 @@ export const mastersApi = {
 
   // Machines
   getMachines:       ()       => api.get('/masters/machines'),
+  createMachine:     (data)   => api.post('/masters/machines', data),
   updateMachine:     (id, data) => api.put(`/masters/machines/${id}`, data),
   toggleMachine:     (id, is_active) => api.patch(`/masters/machines/${id}`, { is_active }),
 

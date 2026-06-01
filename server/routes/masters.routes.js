@@ -12,6 +12,7 @@ router.patch ('/bottle-types/:id',     ctrl.bottleTypes.toggle);
 
 // Machines
 router.get   ('/machines',             ctrl.machines.getAll);
+router.post  ('/machines',             ctrl.machines.create);
 router.put   ('/machines/:id',         ctrl.machines.update);
 router.patch ('/machines/:id',         ctrl.machines.toggle);
 

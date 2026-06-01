@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Settings, Package, Receipt, FileText,
   DollarSign, Calculator, ClipboardList, Database,
-  LogOut, Users, X,
+  LogOut, X, Boxes,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import geoLogo from '../../logo/GEO LOGO.png';
@@ -14,11 +14,11 @@ const allNav = [
   { to: '/purchase',    icon: Package,         label: 'Purchase',    adminOnly: false },
   { to: '/sales',       icon: Receipt,         label: 'Sales',       adminOnly: false },
   { to: '/invoices',    icon: FileText,        label: 'Invoices',    adminOnly: false },
+  { to: '/stock',       icon: Boxes,           label: 'Stock',       adminOnly: false },
   { to: '/outstanding', icon: DollarSign,      label: 'Outstanding', adminOnly: true  },
   { to: '/costing',     icon: Calculator,      label: 'Costing',     adminOnly: true  },
   { to: '/expenses',    icon: ClipboardList,   label: 'Expenses',    adminOnly: true  },
   { to: '/masters',     icon: Database,        label: 'Masters',     adminOnly: true  },
-  { to: '/admin/users', icon: Users,           label: 'Users',       adminOnly: true  },
 ];
 
 export default function MobileDrawer({ isOpen, onClose }) {

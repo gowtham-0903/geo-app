@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Download, Trash2, Receipt, Store, Truck, X } from 'lucide-react';
+import { Plus, Eye, Download, Trash2, Receipt, Store, Truck, X, AlertCircle, ChevronDown, ChevronUp, AlertTriangle, LockKeyhole, Unlock } from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import FormField, { Input, Select } from '../components/FormField';
 import { SkeletonList } from '../components/Skeleton';
 import { salesApi } from '../api/sales.api';
 import { mastersApi } from '../api/masters.api';
+import { costingApi } from '../api/costing.api';
 
 const today   = () => new Date().toISOString().split('T')[0];
 const fmt     = (n) => Number(n || 0).toLocaleString('en-IN');
@@ -13,9 +14,9 @@ const GST_PCT = 0.18;
 
 const emptyForm = {
   date: today(), invoice_no: '', customer_id: '', sale_type: 'local',
-  place_of_supply: 'Tamil Nadu', narration: '',
+  place_of_supply: '', narration: '',
 };
-const emptyItem = { bottle_type_id: '', quantity: '', rate: '' };
+const emptyItem = { bottle_type_id: '', quantity: '', rate: '', suggestedRate: '', rateOverridden: false };
 
 export default function Sales() {
   const [entries,     setEntries]     = useState([]);
@@ -26,11 +27,13 @@ export default function Sales() {
   const [form,        setForm]        = useState(emptyForm);
   const [items,       setItems]       = useState([{ ...emptyItem }]);
   const [saving,      setSaving]      = useState(false);
+  const [saveError,   setSaveError]   = useState('');
   const [loading,     setLoading]     = useState(true);
   const [expandedId,  setExpandedId]  = useState(null);
   const [saleItems,   setSaleItems]   = useState({});
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterCust,  setFilterCust]  = useState('');
+  const [costingMap,  setCostingMap]  = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,12 +54,23 @@ export default function Sales() {
     load();
     mastersApi.getCustomers().then(r => setCustomers(r.data.data.filter(c => c.is_active)));
     mastersApi.getBottleTypes().then(r => setBottleTypes(r.data.data.filter(b => b.is_active)));
+    costingApi.getLatest().then(r => {
+      const map = {};
+      r.data.data.forEach(c => {
+        const rate = Number(c.cap_cost) > 0
+          ? Number(c.total_cost_with_cap)
+          : Number(c.total_cost_with_gst);
+        map[c.bottle_type_id] = rate.toFixed(4);
+      });
+      setCostingMap(map);
+    });
   }, [load]);
 
   function handleCustomerChange(customerId) {
     setF('customer_id', customerId);
     const cust = customers.find(c => c.id === customerId);
-    if (cust?.state) setF('place_of_supply', cust.state);
+    if (cust?.pincode) setF('place_of_supply', cust.pincode);
+    else if (cust?.state) setF('place_of_supply', cust.state);
   }
 
   function setF(field, value) { setForm(f => ({ ...f, [field]: value })); }
@@ -65,11 +79,35 @@ export default function Sales() {
     setItems(prev => {
       const next = [...prev];
       next[i] = { ...next[i], [field]: value };
+      if (field === 'bottle_type_id') {
+        const suggested = costingMap[value];
+        if (suggested && !next[i].rateOverridden) {
+          next[i].suggestedRate = suggested;
+          next[i].rate          = suggested;
+          next[i].amount = ((parseFloat(next[i].quantity) || 0) * parseFloat(suggested)).toFixed(2);
+        }
+      }
       if (field === 'quantity' || field === 'rate') {
         const qty  = field === 'quantity' ? value : next[i].quantity;
         const rate = field === 'rate'     ? value : next[i].rate;
         next[i].amount = ((parseFloat(qty) || 0) * (parseFloat(rate) || 0)).toFixed(2);
       }
+      return next;
+    });
+  }
+
+  function overrideRate(i) {
+    setItems(prev => { const next = [...prev]; next[i] = { ...next[i], rateOverridden: true }; return next; });
+  }
+
+  function resetRate(i) {
+    setItems(prev => {
+      const next = [...prev];
+      const suggested = next[i].suggestedRate;
+      next[i] = {
+        ...next[i], rate: suggested, rateOverridden: false,
+        amount: ((parseFloat(next[i].quantity) || 0) * (parseFloat(suggested) || 0)).toFixed(2),
+      };
       return next;
     });
   }
@@ -84,12 +122,14 @@ export default function Sales() {
   function openAdd() {
     setForm(emptyForm);
     setItems([{ ...emptyItem }]);
+    setSaveError('');
     setModal(true);
   }
 
   async function handleSave() {
     if (!form.customer_id || items.some(it => !it.bottle_type_id || !it.quantity || !it.rate)) return;
     setSaving(true);
+    setSaveError('');
     try {
       await salesApi.create({
         ...form,
@@ -97,14 +137,17 @@ export default function Sales() {
         gst_amount:  gstAmount.toFixed(2),
         bill_amount: billAmount.toFixed(2),
         items: items.map(it => ({
-          bottle_type_id: it.bottle_type_id,
-          quantity:       parseInt(it.quantity),
-          rate:           parseFloat(it.rate),
-          amount:         parseFloat(it.amount),
+          bottle_type_id:  it.bottle_type_id,
+          quantity:        parseInt(it.quantity),
+          rate:            parseFloat(it.rate),
+          amount:          parseFloat(it.amount),
+          rate_overridden: it.rateOverridden ? 1 : 0,
         })),
       });
       await load();
       setModal(false);
+    } catch (err) {
+      setSaveError(err.response?.data?.message || 'Failed to save invoice');
     } finally { setSaving(false); }
   }
 
@@ -215,6 +258,12 @@ export default function Sales() {
 
       {/* New Invoice Modal */}
       <Modal isOpen={modal} onClose={() => setModal(false)} title="New Sales Invoice">
+        {saveError && (
+          <div className="flex items-start gap-2 bg-danger-bg text-danger text-sm rounded-2xl px-4 py-3 mb-4">
+            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+            <span>{saveError}</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Date">
             <Input type="date" value={form.date} onChange={e => setF('date', e.target.value)} />
@@ -288,10 +337,42 @@ export default function Sales() {
                     placeholder="1000" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Rate ₹/Nos</p>
-                  <Input type="number" step="0.01" value={item.rate}
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-gray-400">Rate ₹/Nos</p>
+                    {item.suggestedRate && !item.rateOverridden && (
+                      <button onClick={() => overrideRate(i)}
+                        className="flex items-center gap-0.5 text-xs text-amber-600 font-semibold hover:text-amber-700">
+                        <Unlock size={10} /> Override
+                      </button>
+                    )}
+                    {item.rateOverridden && (
+                      <button onClick={() => resetRate(i)}
+                        className="flex items-center gap-0.5 text-xs text-navy font-semibold">
+                        <LockKeyhole size={10} /> Reset
+                      </button>
+                    )}
+                  </div>
+                  <input type="number" step="0.0001" value={item.rate}
                     onChange={e => setItem(i, 'rate', e.target.value)}
-                    placeholder="3.50" />
+                    readOnly={!!item.suggestedRate && !item.rateOverridden}
+                    placeholder="3.50"
+                    className="input-base"
+                    style={
+                      item.rateOverridden
+                        ? { borderColor: '#F59E0B', background: '#FFFBEB' }
+                        : item.suggestedRate && !item.rateOverridden
+                        ? { cursor: 'not-allowed', opacity: 0.75 }
+                        : {}
+                    }
+                  />
+                  {item.rateOverridden && (
+                    <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                      <AlertTriangle size={10} /> Rate overridden
+                    </p>
+                  )}
+                  {item.suggestedRate && !item.rateOverridden && (
+                    <p className="text-xs text-gray-400 mt-0.5">From costing</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Amount</p>
@@ -361,75 +442,122 @@ function SaleCard({ entry, expanded, items, onToggle, onDelete }) {
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden shadow-card">
+      {/* ── Card header ──────────────────────────────────────── */}
       <div className="p-4">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          {/* Left: badges + name + date */}
           <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle}>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               {entry.invoice_display && (
-                <span className="badge bg-navy text-white">{entry.invoice_display}</span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700">
+                  {entry.invoice_display}
+                </span>
               )}
-              <span className={`badge ${
-                entry.sale_type === 'local' ? 'bg-info-bg text-info' : 'bg-warning-bg text-warning'
-              }`}>
-                {entry.sale_type === 'local'
-                  ? <><Store size={10} className="inline mr-1" />Local</>
-                  : <><Truck size={10} className="inline mr-1" />Despatch</>
-                }
-              </span>
+              {entry.sale_type === 'local' ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700">
+                  <Store size={10} /> Local
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                  <Truck size={10} /> Despatch
+                </span>
+              )}
             </div>
             <p className="text-sm font-bold text-black truncate">{entry.customer_name}</p>
             <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(entry.date).toLocaleDateString('en-IN')}
+              {new Date(entry.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
               {entry.entered_by_name ? ` · ${entry.entered_by_name}` : ''}
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-            <div className="text-right mr-1">
-              <p className="text-sm font-bold text-navy">₹{Number(entry.bill_amount).toLocaleString('en-IN')}</p>
+          {/* Right: amount + actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="text-right">
+              <p className="text-base font-bold text-black">
+                ₹{Number(entry.bill_amount).toLocaleString('en-IN')}
+              </p>
               <p className="text-xs text-gray-400">incl. GST</p>
             </div>
-            <button onClick={e => handleDownload(e, 'preview')} title="Preview"
-              className="icon-btn bg-info-bg text-info hover:bg-blue-100">
-              <Eye size={14} />
-            </button>
-            <button onClick={e => handleDownload(e, 'download')} title="Download PDF"
-              disabled={downloading}
-              className="icon-btn bg-success-bg text-success hover:bg-green-100 disabled:opacity-50">
-              <Download size={14} />
-            </button>
             <button onClick={onDelete}
-              className="icon-btn bg-danger-bg text-danger hover:bg-red-100">
-              <Trash2 size={14} />
+              className="icon-btn bg-app-bg text-gray-400 hover:bg-red-50 hover:text-red-500">
+              <Trash2 size={15} />
+            </button>
+            <button onClick={onToggle}
+              className="icon-btn bg-app-bg text-gray-400 hover:bg-gray-200">
+              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
           </div>
         </div>
       </div>
 
+      {/* ── Expanded: items + tax summary ────────────────────── */}
       {expanded && (
-        <div className="border-t border-gray-50 px-4 pb-4 pt-3">
-          {items ? (
-            <div className="space-y-2">
-              {items.map(item => (
-                <div key={item.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-black">{item.bottle_name}</p>
-                    <p className="text-xs text-gray-400">
-                      {Number(item.quantity).toLocaleString('en-IN')} Nos × ₹{item.rate}
-                      {item.hsn_code ? ` · HSN ${item.hsn_code}` : ''}
+        <div className="border-t border-gray-100 px-4 pb-4 pt-4">
+          {!items ? (
+            <p className="text-xs text-gray-400">Loading items…</p>
+          ) : (
+            <>
+              {/* Line items */}
+              <div className="space-y-3 mb-4">
+                {items.map(item => (
+                  <div key={item.id} className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-black">{item.bottle_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {Number(item.quantity).toLocaleString('en-IN')} Nos × ₹{item.rate}
+                        {item.hsn_code ? ` · HSN ${item.hsn_code}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold text-black ml-4 flex-shrink-0">
+                      ₹{Number(item.amount).toLocaleString('en-IN')}
                     </p>
                   </div>
-                  <p className="text-xs font-bold text-navy">₹{Number(item.amount).toLocaleString('en-IN')}</p>
-                </div>
-              ))}
-              <div className="flex flex-col gap-0.5 pt-2 border-t border-gray-100 text-xs text-gray-400">
-                <span>Net ₹{Number(entry.net_amount).toLocaleString('en-IN')} + CGST ₹{Number(entry.gst_amount / 2).toLocaleString('en-IN')} + SGST ₹{Number(entry.gst_amount / 2).toLocaleString('en-IN')}</span>
-                {entry.place_of_supply && <span>Place of Supply: {entry.place_of_supply}</span>}
-                {entry.narration && <span>Note: {entry.narration}</span>}
+                ))}
               </div>
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400">Loading items...</p>
+
+              {/* Tax summary box */}
+              <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Net</span>
+                  <span>₹{Number(entry.net_amount).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>CGST 9%</span>
+                  <span>₹{Number(entry.gst_amount / 2).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>SGST 9%</span>
+                  <span>₹{Number(entry.gst_amount / 2).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-bold text-black">
+                  <span>Total</span>
+                  <span>₹{Number(entry.bill_amount).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Footer info */}
+              <div className="mt-3 space-y-0.5">
+                {entry.place_of_supply && (
+                  <p className="text-xs text-emerald-600">Place of Supply: {entry.place_of_supply}</p>
+                )}
+                {entry.narration && (
+                  <p className="text-xs text-gray-400">Note: {entry.narration}</p>
+                )}
+              </div>
+
+              {/* PDF actions */}
+              <div className="flex gap-2 mt-4">
+                <button onClick={e => handleDownload(e, 'preview')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-semibold bg-app-bg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition">
+                  <Eye size={13} /> Preview PDF
+                </button>
+                <button onClick={e => handleDownload(e, 'download')}
+                  disabled={downloading}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-semibold bg-app-bg text-gray-600 hover:bg-green-50 hover:text-green-600 transition disabled:opacity-40">
+                  <Download size={13} /> Download PDF
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

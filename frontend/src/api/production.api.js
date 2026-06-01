@@ -1,9 +1,11 @@
 import api from './axios';
 
 export const productionApi = {
-  getAll:       (params) => api.get('/production', { params }),
-  create:       (data)   => api.post('/production', data),
-  update:       (id, data) => api.put(`/production/${id}`, data),
-  remove:       (id)     => api.delete(`/production/${id}`),
-  todaySummary: ()       => api.get('/production/today'),
+  getAll:          (params)     => api.get('/production', { params }),
+  create:          (data)       => api.post('/production', data),
+  update:          (id, data)   => api.put(`/production/${id}`, data),
+  remove:          (id)         => api.delete(`/production/${id}`),
+  todaySummary:    ()           => api.get('/production/today'),
+  preformBalance:  (bottleTypeId) =>
+    api.get('/production/preform-balance', { params: { bottle_type_id: bottleTypeId } }),
 };

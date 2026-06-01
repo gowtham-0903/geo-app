@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Pencil, Check, X, Database, Cpu, Truck, Users,
-  Tag, Store,
+  Tag, Store, Shield, UserCheck, KeyRound, ToggleLeft, ToggleRight,
+  AlertCircle, Eye, EyeOff, CheckCircle2,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
-import FormField, { Input, Select } from '../components/FormField';
+import FormField, { Input, Select, GstinInput } from '../components/FormField';
+import { SkeletonList } from '../components/Skeleton';
 import { mastersApi } from '../api/masters.api';
+import { usersApi } from '../api/users.api';
 import CompanySettingsTab from './CompanySettings';
 
 const TABS = [
@@ -16,6 +19,7 @@ const TABS = [
   { label: 'Customers',          icon: Users    },
   { label: 'Expense Categories', icon: Tag      },
   { label: 'Company',            icon: Store    },
+  { label: 'Users',              icon: Shield   },
 ];
 
 const INDIAN_STATES = [
@@ -58,6 +62,7 @@ export default function Masters() {
       {activeTab === 3 && <CustomersTab />}
       {activeTab === 4 && <ExpenseCategoriesTab />}
       {activeTab === 5 && <CompanySettingsTab />}
+      {activeTab === 6 && <UsersTab />}
     </Layout>
   );
 }
@@ -198,11 +203,11 @@ function BottleTypesTab() {
 
 // ─── MACHINES ─────────────────────────────────────────────────
 function MachinesTab() {
-  const [items, setItems] = useState([]);
-  const [modal, setModal] = useState(false);
+  const [items,   setItems]   = useState([]);
+  const [modal,   setModal]   = useState(false);
   const [editing, setEditing] = useState(null);
-  const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [form,    setForm]    = useState({ machine_number: '', name: '' });
+  const [saving,  setSaving]  = useState(false);
 
   const load = useCallback(async () => {
     const r = await mastersApi.getMachines();
@@ -211,28 +216,51 @@ function MachinesTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  function openAdd() {
+    setEditing(null);
+    setForm({ machine_number: '', name: '' });
+    setModal(true);
+  }
+
+  function openEdit(item) {
+    setEditing(item);
+    setForm({ machine_number: item.machine_number, name: item.name || '' });
+    setModal(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      if (editing) await mastersApi.updateMachine(editing.id, { name: form.name });
+      else await mastersApi.createMachine(form);
+      await load(); setModal(false);
+    } finally { setSaving(false); }
+  }
+
   return (
     <>
-      <MasterList title={`${items.length} machines`}>
+      <MasterList title={`${items.length} machines`} onAdd={openAdd}>
         {items.map(item => (
           <MasterRow key={item.id} title={`Machine ${item.machine_number}`} subtitle={item.name}
             is_active={item.is_active}
-            onEdit={() => { setEditing(item); setName(item.name || ''); setModal(true); }}
+            onEdit={() => openEdit(item)}
             onToggle={async () => { await mastersApi.toggleMachine(item.id, !item.is_active); load(); }} />
         ))}
       </MasterList>
-      <Modal isOpen={modal} onClose={() => setModal(false)} title="Edit Machine">
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editing ? 'Edit Machine' : 'Add Machine'}>
+        {!editing && (
+          <FormField label="Machine Number">
+            <Input type="number" value={form.machine_number}
+              onChange={e => setForm(f => ({ ...f, machine_number: e.target.value }))}
+              placeholder="e.g. 3" />
+          </FormField>
+        )}
         <FormField label="Label">
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Blow-1" />
+          <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="e.g. Blow-3" />
         </FormField>
-        <button
-          onClick={async () => {
-            setSaving(true);
-            await mastersApi.updateMachine(editing.id, { name });
-            await load(); setModal(false); setSaving(false);
-          }}
-          disabled={saving} className="w-full btn-primary">
-          {saving ? 'Saving...' : 'Update Machine'}
+        <button onClick={handleSave} disabled={saving} className="w-full btn-primary">
+          {saving ? 'Saving...' : editing ? 'Update Machine' : 'Add Machine'}
         </button>
       </Modal>
     </>
@@ -240,12 +268,14 @@ function MachinesTab() {
 }
 
 // ─── SUPPLIERS ────────────────────────────────────────────────
+const emptySupplier = { name: '', type: 'preform', contact: '', gstin: '', address: '', pincode: '' };
+
 function SuppliersTab() {
-  const [items, setItems] = useState([]);
-  const [modal, setModal] = useState(false);
+  const [items,   setItems]   = useState([]);
+  const [modal,   setModal]   = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', type: 'preform', contact: '', gstin: '' });
-  const [saving, setSaving] = useState(false);
+  const [form,    setForm]    = useState(emptySupplier);
+  const [saving,  setSaving]  = useState(false);
 
   const load = useCallback(async () => {
     const r = await mastersApi.getSuppliers();
@@ -254,15 +284,35 @@ function SuppliersTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  function openAdd() {
+    setEditing(null); setForm(emptySupplier); setModal(true);
+  }
+  function openEdit(item) {
+    setEditing(item);
+    setForm({
+      name: item.name, type: item.type, contact: item.contact || '',
+      gstin: item.gstin || '', address: item.address || '', pincode: item.pincode || '',
+    });
+    setModal(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      if (editing) await mastersApi.updateSupplier(editing.id, form);
+      else await mastersApi.createSupplier(form);
+      await load(); setModal(false);
+    } finally { setSaving(false); }
+  }
+
   return (
     <>
-      <MasterList title={`${items.length} suppliers`}
-        onAdd={() => { setEditing(null); setForm({ name: '', type: 'preform', contact: '', gstin: '' }); setModal(true); }}>
+      <MasterList title={`${items.length} suppliers`} onAdd={openAdd}>
         {items.map(item => (
           <MasterRow key={item.id} title={item.name}
-            subtitle={`${item.type} · OB: ₹${Number(item.opening_balance).toLocaleString('en-IN')}`}
+            subtitle={`${item.type}${item.pincode ? ' · ' + item.pincode : ''} · OB: ₹${Number(item.opening_balance).toLocaleString('en-IN')}`}
             is_active={item.is_active}
-            onEdit={() => { setEditing(item); setForm({ name: item.name, type: item.type, contact: item.contact || '', gstin: item.gstin || '' }); setModal(true); }}
+            onEdit={() => openEdit(item)}
             onToggle={async () => { await mastersApi.toggleSupplier(item.id, !item.is_active); load(); }} />
         ))}
       </MasterList>
@@ -282,17 +332,16 @@ function SuppliersTab() {
         <FormField label="Contact">
           <Input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="Phone number" />
         </FormField>
-        <FormField label="GSTIN (optional)">
-          <Input value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value }))} placeholder="GST number" />
+        <FormField label="GSTIN">
+          <GstinInput value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value }))} />
         </FormField>
-        <button
-          onClick={async () => {
-            setSaving(true);
-            if (editing) await mastersApi.updateSupplier(editing.id, form);
-            else await mastersApi.createSupplier(form);
-            await load(); setModal(false); setSaving(false);
-          }}
-          disabled={saving} className="w-full btn-primary">
+        <FormField label="Address">
+          <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Street / locality" />
+        </FormField>
+        <FormField label="Pin Code">
+          <Input value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} placeholder="e.g. 641001" />
+        </FormField>
+        <button onClick={handleSave} disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Supplier'}
         </button>
       </Modal>
@@ -301,15 +350,17 @@ function SuppliersTab() {
 }
 
 // ─── CUSTOMERS ────────────────────────────────────────────────
+const emptyCustomer = {
+  name: '', type: 'local', contact: '', address: '', gstin: '', pincode: '',
+  state: 'Tamil Nadu', state_code: '33', email: '', billing_address: '', credit_days: '0',
+};
+
 function CustomersTab() {
-  const [items, setItems] = useState([]);
-  const [modal, setModal] = useState(false);
+  const [items,   setItems]   = useState([]);
+  const [modal,   setModal]   = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({
-    name: '', type: 'local', contact: '', address: '', gstin: '',
-    state: 'Tamil Nadu', state_code: '33', email: '', billing_address: '', credit_days: '0',
-  });
-  const [saving, setSaving] = useState(false);
+  const [form,    setForm]    = useState(emptyCustomer);
+  const [saving,  setSaving]  = useState(false);
 
   const load = useCallback(async () => {
     const r = await mastersApi.getCustomers();
@@ -330,16 +381,14 @@ function CustomersTab() {
   }
 
   function openAdd() {
-    setEditing(null);
-    setForm({ name: '', type: 'local', contact: '', address: '', gstin: '', state: 'Tamil Nadu', state_code: '33', email: '', billing_address: '', credit_days: '0' });
-    setModal(true);
+    setEditing(null); setForm(emptyCustomer); setModal(true);
   }
 
   function openEdit(item) {
     setEditing(item);
     setForm({
       name: item.name, type: item.type, contact: item.contact || '',
-      address: item.address || '', gstin: item.gstin || '',
+      address: item.address || '', gstin: item.gstin || '', pincode: item.pincode || '',
       state: item.state || 'Tamil Nadu', state_code: item.state_code || '33',
       email: item.email || '', billing_address: item.billing_address || '',
       credit_days: String(item.credit_days || 0),
@@ -361,7 +410,7 @@ function CustomersTab() {
       <MasterList title={`${items.length} customers`} onAdd={openAdd}>
         {items.map(item => (
           <MasterRow key={item.id} title={item.name}
-            subtitle={`${item.type} · ${item.state || 'TN'} · OB: ₹${Number(item.opening_balance).toLocaleString('en-IN')}`}
+            subtitle={`${item.type} · ${item.state || 'TN'}${item.pincode ? ' ' + item.pincode : ''} · OB: ₹${Number(item.opening_balance).toLocaleString('en-IN')}`}
             is_active={item.is_active}
             onEdit={() => openEdit(item)}
             onToggle={async () => { await mastersApi.toggleCustomer(item.id, !item.is_active); load(); }} />
@@ -385,11 +434,11 @@ function CustomersTab() {
         <FormField label="Contact">
           <Input value={form.contact} onChange={e => setF('contact', e.target.value)} placeholder="Phone number" />
         </FormField>
-        <FormField label="Email (optional)">
+        <FormField label="Email">
           <Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="customer@email.com" />
         </FormField>
-        <FormField label="GSTIN (optional)">
-          <Input value={form.gstin} onChange={e => setF('gstin', e.target.value)} placeholder="GST number" />
+        <FormField label="GSTIN">
+          <GstinInput value={form.gstin} onChange={e => setF('gstin', e.target.value)} />
         </FormField>
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
@@ -399,18 +448,238 @@ function CustomersTab() {
               </Select>
             </FormField>
           </div>
-          <FormField label="Code">
+          <FormField label="State Code">
             <Input value={form.state_code} onChange={e => setF('state_code', e.target.value)} placeholder="33" />
           </FormField>
         </div>
+        <FormField label="Pin Code">
+          <Input value={form.pincode} onChange={e => setF('pincode', e.target.value)} placeholder="e.g. 641001" />
+        </FormField>
         <FormField label="Delivery Address">
           <Input value={form.address} onChange={e => setF('address', e.target.value)} placeholder="Delivery address" />
         </FormField>
-        <FormField label="Billing Address (if different)">
-          <Input value={form.billing_address} onChange={e => setF('billing_address', e.target.value)} placeholder="Billing address" />
+        <FormField label="Billing Address">
+          <Input value={form.billing_address} onChange={e => setF('billing_address', e.target.value)} placeholder="Billing address (if different)" />
         </FormField>
         <button onClick={handleSave} disabled={saving} className="w-full btn-primary">
           {saving ? 'Saving...' : editing ? 'Update' : 'Add Customer'}
+        </button>
+      </Modal>
+    </>
+  );
+}
+
+// ─── USERS ────────────────────────────────────────────────────
+function UsersTab() {
+  const [users,      setUsers]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [modal,      setModal]      = useState(null);
+  const [selected,   setSelected]   = useState(null);
+  const [saving,     setSaving]     = useState(false);
+  const [formError,  setFormError]  = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [showPw,     setShowPw]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '', role: 'supervisor', is_active: true });
+  const [editForm,   setEditForm]   = useState({ name: '', email: '', role: 'supervisor', is_active: true });
+  const [pwForm,     setPwForm]     = useState({ password: '', confirm: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const r = await usersApi.getAll();
+      setUsers(r.data.users || r.data.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load users');
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function flash(msg) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); }
+  function closeModal() { setModal(null); setSelected(null); setFormError(''); }
+
+  function openCreate() {
+    setCreateForm({ name: '', email: '', password: '', role: 'supervisor', is_active: true });
+    setFormError(''); setShowPw(false); setModal('create');
+  }
+  function openEdit(user) {
+    setSelected(user);
+    setEditForm({ name: user.name, email: user.email, role: user.role, is_active: user.is_active });
+    setFormError(''); setModal('edit');
+  }
+  function openPassword(user) {
+    setSelected(user);
+    setPwForm({ password: '', confirm: '' });
+    setFormError(''); setShowPw(false); setShowConfirm(false); setModal('password');
+  }
+
+  async function handleCreate() {
+    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password) {
+      setFormError('Name, email, and password are required.'); return;
+    }
+    if (createForm.password.length < 6) { setFormError('Password must be at least 6 characters.'); return; }
+    setSaving(true); setFormError('');
+    try {
+      await usersApi.create(createForm);
+      await load(); closeModal(); flash('User created successfully');
+    } catch (err) { setFormError(err.response?.data?.message || 'Failed to create user'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleEdit() {
+    if (!editForm.name.trim() || !editForm.email.trim()) { setFormError('Name and email are required.'); return; }
+    setSaving(true); setFormError('');
+    try {
+      await usersApi.update(selected.id, editForm);
+      await load(); closeModal(); flash('User updated successfully');
+    } catch (err) { setFormError(err.response?.data?.message || 'Failed to update user'); }
+    finally { setSaving(false); }
+  }
+
+  async function handlePasswordReset() {
+    if (!pwForm.password) { setFormError('New password is required.'); return; }
+    if (pwForm.password.length < 6) { setFormError('Password must be at least 6 characters.'); return; }
+    if (pwForm.password !== pwForm.confirm) { setFormError('Passwords do not match.'); return; }
+    setSaving(true); setFormError('');
+    try {
+      await usersApi.resetPassword(selected.id, { password: pwForm.password });
+      closeModal(); flash('Password reset successfully');
+    } catch (err) { setFormError(err.response?.data?.message || 'Failed to reset password'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleToggleActive(user) {
+    try {
+      await usersApi.toggleActive(user.id, !user.is_active);
+      await load(); flash(user.is_active ? 'User deactivated' : 'User activated');
+    } catch (err) { setError(err.response?.data?.message || 'Failed to update'); }
+  }
+
+  return (
+    <>
+      {successMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 bg-success text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-modal">
+          <CheckCircle2 size={16} /> {successMsg}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-gray-500">{users.length} users</p>
+        <button onClick={openCreate} className="flex items-center gap-1.5 btn-primary px-4 py-2 text-xs">
+          <Plus size={14} /> Add User
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-danger-bg text-danger text-sm rounded-2xl px-4 py-3 mb-4">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      {loading ? <SkeletonList count={3} /> : (
+        <div className="space-y-2">
+          {users.map(user => (
+            <div key={user.id} className={`bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-card ${!user.is_active ? 'opacity-60' : ''}`}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${user.role === 'admin' ? 'bg-navy' : 'bg-navy-faint'}`}>
+                  {user.role === 'admin'
+                    ? <Shield size={15} className="text-white" />
+                    : <UserCheck size={15} className="text-navy" />
+                  }
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-black truncate">{user.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+                <button onClick={() => openEdit(user)} className="icon-btn bg-app-bg text-gray-500 hover:bg-navy-faint hover:text-navy">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => openPassword(user)} className="icon-btn bg-app-bg text-gray-500 hover:bg-warning-bg hover:text-warning">
+                  <KeyRound size={13} />
+                </button>
+                <button onClick={() => handleToggleActive(user)}
+                  className={`icon-btn transition ${user.is_active ? 'bg-success-bg text-success hover:bg-danger-bg hover:text-danger' : 'bg-danger-bg text-danger hover:bg-success-bg hover:text-success'}`}>
+                  {user.is_active ? <Check size={13} /> : <X size={13} />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      <Modal isOpen={modal === 'create'} onClose={closeModal} title="Create New User">
+        {formError && <div className="flex items-center gap-2 bg-danger-bg text-danger text-sm rounded-2xl px-4 py-3 mb-4"><AlertCircle size={15} />{formError}</div>}
+        <FormField label="Full Name">
+          <Input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Ravi Kumar" autoComplete="off" />
+        </FormField>
+        <FormField label="Email Address">
+          <Input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder="ravi@example.com" autoComplete="off" />
+        </FormField>
+        <FormField label="Password">
+          <div className="relative">
+            <Input type={showPw ? 'text' : 'password'} value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder="Min. 6 characters" autoComplete="new-password" />
+            <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+        </FormField>
+        <FormField label="Role">
+          <Select value={createForm.role} onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </Select>
+        </FormField>
+        <button onClick={handleCreate} disabled={saving} className="w-full btn-primary">
+          {saving ? 'Creating...' : 'Create User'}
+        </button>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal isOpen={modal === 'edit'} onClose={closeModal} title={`Edit — ${selected?.name}`}>
+        {formError && <div className="flex items-center gap-2 bg-danger-bg text-danger text-sm rounded-2xl px-4 py-3 mb-4"><AlertCircle size={15} />{formError}</div>}
+        <FormField label="Full Name">
+          <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+        </FormField>
+        <FormField label="Email Address">
+          <Input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+        </FormField>
+        <FormField label="Role">
+          <Select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </Select>
+        </FormField>
+        <button onClick={handleEdit} disabled={saving} className="w-full btn-primary">
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </Modal>
+
+      {/* Password Modal */}
+      <Modal isOpen={modal === 'password'} onClose={closeModal} title={`Reset Password — ${selected?.name}`}>
+        {formError && <div className="flex items-center gap-2 bg-danger-bg text-danger text-sm rounded-2xl px-4 py-3 mb-4"><AlertCircle size={15} />{formError}</div>}
+        <FormField label="New Password">
+          <div className="relative">
+            <Input type={showPw ? 'text' : 'password'} value={pwForm.password} onChange={e => setPwForm(f => ({ ...f, password: e.target.value }))} placeholder="Min. 6 characters" autoComplete="new-password" />
+            <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+        </FormField>
+        <FormField label="Confirm Password">
+          <div className="relative">
+            <Input type={showConfirm ? 'text' : 'password'} value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} placeholder="Repeat password" autoComplete="new-password" />
+            <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+        </FormField>
+        <button onClick={handlePasswordReset} disabled={saving} className="w-full btn-primary">
+          {saving ? 'Resetting...' : 'Reset Password'}
         </button>
       </Modal>
     </>

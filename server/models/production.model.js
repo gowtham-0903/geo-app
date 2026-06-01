@@ -106,6 +106,22 @@ const Production = {
     );
     return rows;
   },
+
+  checkPreformStock: async (bottle_type_id, preformsNeeded, excludeEntryId = null) => {
+    const sql = `
+      SELECT
+        COALESCE((SELECT SUM(quantity_nos) FROM preform_purchases WHERE bottle_type_id = ?), 0)
+        -
+        COALESCE((SELECT SUM(preforms_used + preform_waste) FROM production_entries
+                  WHERE bottle_type_id = ?${excludeEntryId ? ' AND id != ?' : ''}), 0)
+        AS available
+    `;
+    const params = excludeEntryId
+      ? [bottle_type_id, bottle_type_id, excludeEntryId]
+      : [bottle_type_id, bottle_type_id];
+    const [[row]] = await pool.execute(sql, params);
+    return Number(row.available);
+  },
 };
 
 module.exports = Production;

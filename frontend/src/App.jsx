@@ -14,7 +14,7 @@ const Costing        = lazy(() => import('./pages/Costing'));
 const Expenses       = lazy(() => import('./pages/Expenses'));
 const Masters        = lazy(() => import('./pages/Masters'));
 const Invoices       = lazy(() => import('./pages/Invoices'));
-const UserManagement = lazy(() => import('./pages/UserManagement'));
+const Stock          = lazy(() => import('./pages/Stock'));
 
 export default function App() {
   return (
@@ -32,7 +32,8 @@ export default function App() {
             <Route path="/costing"     element={<ProtectedRoute adminOnly><Costing /></ProtectedRoute>} />
             <Route path="/expenses"    element={<ProtectedRoute adminOnly><Expenses /></ProtectedRoute>} />
             <Route path="/masters"     element={<ProtectedRoute adminOnly><Masters /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<Navigate to="/masters" replace />} />
+            <Route path="/stock"       element={<ProtectedRoute><Stock /></ProtectedRoute>} />
             <Route path="*"            element={<Navigate to="/login" replace />} />
           </Routes>
         </Suspense>

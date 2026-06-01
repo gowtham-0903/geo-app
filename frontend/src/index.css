@@ -24,6 +24,16 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Remove spin buttons and prevent scroll-wheel from changing number inputs */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+
   body {
     font-family: 'Inter', sans-serif;
     background-color: var(--color-app-bg);

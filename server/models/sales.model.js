@@ -22,6 +22,33 @@ const Sales = {
     try {
       await conn.beginTransaction();
 
+      // ── VALIDATE BOTTLE STOCK BEFORE CREATING INVOICE ─────────
+      for (const item of items) {
+        const [[stockRow]] = await conn.execute(`
+          SELECT
+            COALESCE(
+              (SELECT SUM(bottles_produced - bottle_damage)
+               FROM production_entries WHERE bottle_type_id = ?), 0
+            ) -
+            COALESCE(
+              (SELECT SUM(si.quantity) FROM sale_items si WHERE si.bottle_type_id = ?), 0
+            ) AS available
+        `, [item.bottle_type_id, item.bottle_type_id]);
+
+        const available = Number(stockRow.available);
+        if (available < item.quantity) {
+          const [[bt]] = await conn.execute(
+            'SELECT name FROM bottle_types WHERE id = ?', [item.bottle_type_id]
+          );
+          const err = new Error(
+            `Insufficient bottle stock for ${bt[0]?.name || 'item'}. Available: ${available.toLocaleString('en-IN')}, Required: ${Number(item.quantity).toLocaleString('en-IN')}`
+          );
+          err.status = 400;
+          throw err;
+        }
+      }
+      // ──────────────────────────────────────────────────────────
+
       await conn.execute(
         `INSERT INTO sales
           (id, date, invoice_no, invoice_number, customer_id, sale_type,
@@ -38,9 +65,10 @@ const Sales = {
 
       for (const item of items) {
         await conn.execute(
-          `INSERT INTO sale_items (id, sale_id, bottle_type_id, quantity, rate, amount)
-           VALUES (?,?,?,?,?,?)`,
-          [uuidv4(), saleId, item.bottle_type_id, item.quantity, item.rate, item.amount]
+          `INSERT INTO sale_items (id, sale_id, bottle_type_id, quantity, rate, amount, rate_overridden)
+           VALUES (?,?,?,?,?,?,?)`,
+          [uuidv4(), saleId, item.bottle_type_id, item.quantity, item.rate, item.amount,
+           item.rate_overridden ? 1 : 0]
         );
       }
 
@@ -114,7 +142,8 @@ const Sales = {
       `SELECT s.*,
               CONCAT(cs.invoice_prefix, '-', LPAD(s.invoice_number, 4, '0')) AS invoice_display,
               c.name, c.gstin, c.address, c.billing_address,
-              c.state, c.state_code, c.email AS cust_email,
+              c.state, c.state_code, c.pincode AS cust_pincode,
+              c.email AS cust_email,
               c.type AS sale_category, c.contact AS cust_contact
        FROM sales s
        JOIN customers c ON s.customer_id = c.id
@@ -154,6 +183,7 @@ const Sales = {
         billing_address: sale.billing_address,
         state:           sale.state || 'Tamil Nadu',
         state_code:      sale.state_code || '33',
+        pincode:         sale.cust_pincode || '',
         city:            sale.city || '',
         email:           sale.cust_email,
         contact:         sale.cust_contact,

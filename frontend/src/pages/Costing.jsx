@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, History, Pencil, RefreshCw, AlertTriangle, Calculator } from 'lucide-react';
+import { Search, History, Pencil, RefreshCw, AlertTriangle, Calculator, Plus } from 'lucide-react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import FormField, { Input } from '../components/FormField';
 import { SkeletonList } from '../components/Skeleton';
 import { costingApi } from '../api/costing.api';
+import { mastersApi } from '../api/masters.api';
 
 const fmt4 = (n) => Number(n || 0).toFixed(4);
 const fmt2 = (n) => Number(n || 0).toFixed(2);
@@ -31,8 +32,27 @@ export default function Costing() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await costingApi.getLatest();
-      setItems(r.data.data);
+      const [cr, br] = await Promise.all([
+        costingApi.getLatest(),
+        mastersApi.getBottleTypes(),
+      ]);
+      const costing     = cr.data.data;
+      const bottleTypes = br.data.data.filter(b => b.is_active);
+      const costingMap  = new Map(costing.map(c => [c.bottle_type_id, c]));
+      const merged = [
+        ...costing.map(c => ({ ...c, hasCost: true })),
+        ...bottleTypes
+          .filter(bt => !costingMap.has(bt.id))
+          .map(bt => ({
+            bottle_type_id:       bt.id,
+            bottle_name:          bt.name,
+            weight_grams:         bt.weight_grams,
+            category:             bt.category,
+            default_blowing_cost: bt.default_blowing_cost,
+            hasCost:              false,
+          })),
+      ];
+      setItems(merged);
     } finally {
       setLoading(false);
     }
@@ -70,7 +90,7 @@ export default function Costing() {
     setForm({
       raw_material_rate: item.raw_material_rate ?? '',
       wastage_pct:       item.wastage_pct ?? '2',
-      blowing_cost:      item.blowing_cost ?? '',
+      blowing_cost:      item.blowing_cost ?? item.default_blowing_cost ?? '',
       cap_cost:          item.cap_cost ?? '0',
       gst_pct:           item.gst_pct ?? '18',
       effective_from:    new Date().toISOString().split('T')[0],
@@ -190,16 +210,16 @@ export default function Costing() {
               <div className="w-16 h-16 bg-navy-faint rounded-3xl flex items-center justify-center mx-auto mb-4">
                 <Calculator size={28} className="text-navy-light" />
               </div>
-              <p className="text-gray-500 font-semibold">No costing data yet</p>
-              <p className="text-gray-400 text-sm mt-1">Add costing from Masters → Bottle Types first</p>
+              <p className="text-gray-500 font-semibold">No bottle types found</p>
+              <p className="text-gray-400 text-sm mt-1">Add bottle types in Masters first</p>
             </div>
           )}
         </>
       )}
 
-      {/* Single Update Modal */}
+      {/* Single Update / Add Costing Modal */}
       <Modal isOpen={modal} onClose={() => setModal(false)}
-        title={`Update — ${selected?.bottle_name}`}>
+        title={`${selected?.hasCost === false ? 'Add Costing' : 'Update'} — ${selected?.bottle_name}`}>
         <div className="bg-app-bg rounded-2xl p-3 mb-4 flex items-center gap-3">
           <div className="flex-1">
             <p className="text-xs text-gray-500">Weight: <span className="font-bold text-black">{selected?.weight_grams}g</span></p>
@@ -262,7 +282,7 @@ export default function Costing() {
 
         <button onClick={handleSave} disabled={saving || !form.raw_material_rate || !form.blowing_cost}
           className="w-full btn-primary">
-          {saving ? 'Saving...' : 'Save Rate Revision'}
+          {saving ? 'Saving...' : selected?.hasCost === false ? 'Add Costing' : 'Save Rate Revision'}
         </button>
       </Modal>
 
@@ -344,6 +364,27 @@ export default function Costing() {
 }
 
 function CostingCard({ item, onEdit, onHistory }) {
+  if (!item.hasCost) {
+    return (
+      <div className="bg-white rounded-3xl p-4 shadow-card border border-red-100">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm font-bold text-black truncate">{item.bottle_name}</p>
+            </div>
+            <p className="text-xs text-gray-400">{item.weight_grams}g · <span className="capitalize">{item.category}</span></p>
+            <p className="text-xs text-red-500 font-semibold mt-1">Costing not set</p>
+          </div>
+          <button onClick={onEdit}
+            className="flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-2xl hover:bg-red-600 transition ml-3 flex-shrink-0">
+            <Plus size={12} /> Add Costing
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const hasCapCost = Number(item.cap_cost || 0) > 0;
   const finalCost  = hasCapCost ? item.total_cost_with_cap : item.total_cost_with_gst;
 

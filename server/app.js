@@ -27,6 +27,8 @@ app.use('/api/costing',    require('./routes/costing.routes'));
 app.use('/api/dashboard',  require('./routes/dashboard.routes'));
 app.use('/api/expenses',   require('./routes/expenses.routes'));
 app.use('/api/payments',   require('./routes/payments.routes'));
+app.use('/api/stock',      require('./routes/stock.routes'));
+app.use('/api/validate',   require('./routes/validate.routes'));
 
 app.use(errorHandler);
 

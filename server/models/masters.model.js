@@ -47,6 +47,13 @@ const Machine = {
     const [rows] = await pool.execute('SELECT * FROM machines ORDER BY machine_number');
     return rows;
   },
+  create: async ({ machine_number, name }) => {
+    const [result] = await pool.execute(
+      'INSERT INTO machines (machine_number, name, is_active) VALUES (?, ?, 1)',
+      [machine_number, name || '']
+    );
+    return { id: result.insertId, machine_number: Number(machine_number), name: name || '', is_active: 1 };
+  },
   update: async (id, { name }) => {
     await pool.execute('UPDATE machines SET name=? WHERE id=?', [name, id]);
   },
@@ -61,19 +68,20 @@ const Supplier = {
     const [rows] = await pool.execute('SELECT * FROM suppliers ORDER BY name');
     return rows;
   },
-  create: async ({ name, type, contact, gstin, opening_balance }) => {
+  create: async ({ name, type, contact, gstin, address, pincode, opening_balance }) => {
     const id = uuidv4();
     await pool.execute(
-      'INSERT INTO suppliers (id, name, type, contact, gstin, opening_balance) VALUES (?,?,?,?,?,?)',
-      [id, name, type || 'preform', contact || null, gstin || null, opening_balance || 0]
+      'INSERT INTO suppliers (id, name, type, contact, gstin, address, pincode, opening_balance) VALUES (?,?,?,?,?,?,?,?)',
+      [id, name, type || 'preform', contact || null, gstin || null,
+       address || null, pincode || null, opening_balance || 0]
     );
     const [rows] = await pool.execute('SELECT * FROM suppliers WHERE id=?', [id]);
     return rows[0];
   },
-  update: async (id, { name, type, contact, gstin }) => {
+  update: async (id, { name, type, contact, gstin, address, pincode }) => {
     await pool.execute(
-      'UPDATE suppliers SET name=?, type=?, contact=?, gstin=? WHERE id=?',
-      [name, type, contact || null, gstin || null, id]
+      'UPDATE suppliers SET name=?, type=?, contact=?, gstin=?, address=?, pincode=? WHERE id=?',
+      [name, type, contact || null, gstin || null, address || null, pincode || null, id]
     );
   },
   toggle: async (id, is_active) => {
@@ -87,30 +95,30 @@ const Customer = {
     const [rows] = await pool.execute('SELECT * FROM customers ORDER BY name');
     return rows;
   },
-  create: async ({ name, type, contact, address, gstin, opening_balance,
+  create: async ({ name, type, contact, address, gstin, pincode, opening_balance,
                    state, state_code, email, billing_address, credit_days }) => {
     const id = uuidv4();
     await pool.execute(
       `INSERT INTO customers
-        (id, name, type, contact, address, gstin, opening_balance,
+        (id, name, type, contact, address, gstin, pincode, opening_balance,
          state, state_code, email, billing_address, credit_days)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [id, name, type || 'local', contact || null, address || null,
-       gstin || null, opening_balance || 0,
+       gstin || null, pincode || null, opening_balance || 0,
        state || 'Tamil Nadu', state_code || '33',
        email || null, billing_address || null, credit_days || 0]
     );
     const [rows] = await pool.execute('SELECT * FROM customers WHERE id=?', [id]);
     return rows[0];
   },
-  update: async (id, { name, type, contact, address, gstin,
+  update: async (id, { name, type, contact, address, gstin, pincode,
                         state, state_code, email, billing_address, credit_days }) => {
     await pool.execute(
       `UPDATE customers
-       SET name=?, type=?, contact=?, address=?, gstin=?,
+       SET name=?, type=?, contact=?, address=?, gstin=?, pincode=?,
            state=?, state_code=?, email=?, billing_address=?, credit_days=?
        WHERE id=?`,
-      [name, type, contact || null, address || null, gstin || null,
+      [name, type, contact || null, address || null, gstin || null, pincode || null,
        state || 'Tamil Nadu', state_code || '33',
        email || null, billing_address || null, credit_days || 0, id]
     );

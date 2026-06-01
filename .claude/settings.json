@@ -8,7 +8,8 @@
       "PowerShell(mysqldump -u root -pgowtham@0903 --no-data geo_db 2>$null)",
       "PowerShell(mysql -u root -pgowtham@0903 geo_db -e \"SELECT id, name, email, role, is_active FROM users;\" 2>$null)",
       "PowerShell(mysql -u root -pgowtham@0903 geo_db -e \"SELECT id, name, email, password_hash, role, is_active FROM users WHERE role='admin';\" 2>$null)",
-      "PowerShell(mysqldump -u root -pgowtham@0903 --single-transaction --routines --triggers geo_db > \"d:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql\" 2>$null; Write-Host \"Done. Lines: $\\(\\(Get-Content 'd:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql'\\).Count\\)\")"
+      "PowerShell(mysqldump -u root -pgowtham@0903 --single-transaction --routines --triggers geo_db > \"d:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql\" 2>$null; Write-Host \"Done. Lines: $\\(\\(Get-Content 'd:\\\\projects\\\\geo-app\\\\server\\\\sql\\\\full_backup.sql'\\).Count\\)\")",
+      "PowerShell(node -e \"const bcrypt = require\\('./server/node_modules/bcrypt'\\); bcrypt.hash\\('Admin@#1234', 10\\).then\\(h => console.log\\(h\\)\\)\" 2>$null)"
     ]
   }
 }
